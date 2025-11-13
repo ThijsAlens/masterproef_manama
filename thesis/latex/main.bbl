@@ -1,0 +1,50 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.2 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{none/global//global/global}
+    \entry{callebaut10lorawan}{article}{}
+      \name{author}{1}{}{%
+        {{hash=a39328df385494a5c30a07f12c09da16}{%
+           family={Callebaut},
+           familyi={C\bibinitperiod},
+           given={Gilles},
+           giveni={G\bibinitperiod}}}%
+      }
+      \strng{namehash}{a39328df385494a5c30a07f12c09da16}
+      \strng{fullhash}{a39328df385494a5c30a07f12c09da16}
+      \strng{bibnamehash}{a39328df385494a5c30a07f12c09da16}
+      \strng{authorbibnamehash}{a39328df385494a5c30a07f12c09da16}
+      \strng{authornamehash}{a39328df385494a5c30a07f12c09da16}
+      \strng{authorfullhash}{a39328df385494a5c30a07f12c09da16}
+      \field{sortinit}{2}
+      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{doi}
+      \field{title}{LoRaWAN Network Simulator}
+      \field{volume}{10}
+      \field{pages}{5281}
+      \range{pages}{1}
+    \endentry
+  \enddatalist
+  \missing{s19030585}
+\endrefsection
+\endinput
+
