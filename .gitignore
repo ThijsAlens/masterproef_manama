@@ -208,3 +208,5 @@ __marimo__/
 
 # custom additions
 thesis/latex/build
+thesis/latex/_minted-main
+code/robot_demonstrator
