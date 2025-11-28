@@ -1,132 +1,177 @@
+import datetime
 import pyrealsense2 as rs
 import numpy as np
 import cv2
 
-import threading
-import time
+import camera.config as cam_config
 
-class Camera:
+class RealSenseCamera:
     """
-    A class that defines an interface for a camera.
-
-    It uses a background thread to continuously capture frames from the camera. To read the latest frame, call the get_frames() method.
+    This class is used for everything to do with the RealSense D415 camera.
+    It handles the setup, automatically calibrates the camera to a checkerboard pattern.
     """
-    def __init__(self, colour_resolution: tuple[int, int]=(1920, 1080), depth_resolution: tuple[int, int]=(1280, 720), fps: int=30, enable_colour: bool=True, enable_depth: bool=True, show_colour: bool=True, show_depth: bool=True):
-        # Camera configuration
-        self.color_resolution = colour_resolution
-        self.depth_resolution = depth_resolution
-        self.fps: int = fps
 
-        # Configure what to capture and display
-        self.enable_colour: bool = enable_colour
-        self.enable_depth: bool = enable_depth
-        self.capture_thread: threading.Thread = None
-        self.show_colour: bool = show_colour
-        self.show_colour_thread: threading.Thread = None
-        self.show_depth: bool = show_depth
-        self.show_depth_thread: threading.Thread = None
+    # --- 2. Constructor and Initialization ---
+    def __init__(self):
+        # Camera settings
+        self.width = cam_config.WIDTH
+        self.height = cam_config.HEIGHT
+        self.fps = cam_config.FPS
+        
+        # Calibration matrices
+        self.K_matrix = None            # Camera Matrix (K), this is the intrinsic matrix which corrects for focal length and principal point
+        self.D_matrix = None            # Distortion Coefficients (D), for lens distortion correction
+        self.rs_intrinsics = None       # RealSense Intrinsics object, used for the translation from pixel to camera coordinates
+        self.R_matrix = None            # Rotation Matrix (World to Camera)
+        self.T_vector = None            # Translation Vector (World to Camera)
 
-        # Initialize camera resources
-        self.pipeline: rs.pipeline = None
-        self.config: rs.config = None
-        self.running: bool = False
+        # RealSense pipeline setup
+        self.pipeline = rs.pipeline()   # Create a RealSense pipeline, this is used to configure, start and stop the camera
+        self.config = rs.config()       # Create a config object to configure the pipeline
+        self.config.enable_stream(rs.stream.depth, self.width, self.height, rs.format.z16, self.fps)   # Enable depth stream
+        self.config.enable_stream(rs.stream.color, self.width, self.height, rs.format.bgr8, self.fps)  # Enable color stream
+        return
 
-        # Frame storage
-        self.frame_lock = threading.Lock()
-        self.latest_colour_frame: np.ndarray = None
-        self.latest_depth_frame: np.ndarray = None
+    def start_stream(self):
+        """Starts the RealSense pipeline and get the intrinsics.
+
+        Args:
+            None
+        
+        Returns:
+            profile: The RealSense pipeline profile.
+        """
+        profile = self.pipeline.start(self.config)
+
+        # Get the profile for the depth stream and extract factory intrinsics
+        depth_profile = rs.video_stream_profile(profile.get_stream(rs.stream.depth))
+        self.rs_intrinsics = depth_profile.get_intrinsics()
+        return profile
     
-    # ------------------------------------------------------------
-    # Internal Methods (threads)
-    # ------------------------------------------------------------
-    def _capture_loop(self):
-        """Background thread that constantly reads frames."""
-        while self.running:
+    def stop_stream(self):
+        """Stops the RealSense pipeline."""
+        self.pipeline.stop()
+        print("RealSense stream stopped.")
+    
+    def setup_matrices(self, mode: str = "live", file_path_T: str = None, file_path_R: str = None, file_path_image: str = None) -> None:
+        """
+        Sets up the intrinsic (K, D) and extrinsic (R, T) matrices for the camera.
+        Intrinsic matrices are calculated using the RealSense intrinsics, if they are not set, run start_stream() first.
+        Extrinsic matrices (R and T) are:
+            - loaded from a previous run (specify file paths) (mode="load")
+            - calculated from live calibration (needs the pipeline, if not active, run start_stream()) (mode="live", default)
+            - calculated from a checkerboard image (setup_live=False, specify file path) (mode="image")
+
+        Args:
+            mode (str): "live", "load", or "image" to specify how to set up R and T. (default: "live")
+            file_path_T (str): File path to load the T vector from (required if mode="load").
+            file_path_R (str): File path to load the R matrix from (required if mode="load").
+            file_path_image (str): File path to load the checkerboard image from (required if mode="image").
+
+        Returns:
+            None
+        """
+
+        if self.rs_intrinsics is None:
+            raise ValueError("RealSense intrinsics not set. Call start_stream() first.")
+        if mode != "live" and mode != "load" and mode != "image":
+            raise ValueError("Invalid mode. Choose 'live', 'load', or 'image'.")
+        
+        # --- Intrinsic Matrices Setup ---
+        
+        self.K_matrix = np.array([
+            [self.rs_intrinsics.fx, 0, self.rs_intrinsics.ppx],
+            [0, self.rs_intrinsics.fy, self.rs_intrinsics.ppy],
+            [0, 0, 1]
+        ], dtype=np.float64)
+
+        self.D_matrix = np.array(self.rs_intrinsics.coeffs, dtype=np.float64)
+
+        # --- Extrinsic Matrices Setup ---
+
+        match mode:
+            case "load":
+                if file_path_T is None or file_path_R is None:
+                    raise ValueError("File paths for T and R matrices must be provided to load previous setup.")
+                self.T_vector = np.loadtxt(file_path_T)
+                self.R_matrix = np.loadtxt(file_path_R)
+                return
+
+            case "image":
+                if file_path_image is None:
+                    raise ValueError("File path for checkerboard image must be provided for image-based calibration.")
+                # Load image
+                img = cv2.imread(file_path_image)
+                if img is None:
+                    raise ValueError(f"Could not load image from {file_path_image}.")
+                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+            case "live":
+                # Get a live color frame
+                input("Place the checkerboard in front of the camera and press Enter to capture a frame for calibration...")
+                img = self.get_live_frame(stream=rs.stream.color)
+                if img is None:
+                    raise ValueError("Could not capture a color frame for calibration.")
+                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        objp = np.zeros((cam_config.CHECKERBOARD_SIZE[0] * cam_config.CHECKERBOARD_SIZE[1], 3), np.float32)
+        objp[:, :2] = np.mgrid[0:cam_config.CHECKERBOARD_SIZE[0], 0:cam_config.CHECKERBOARD_SIZE[1]].T.reshape(-1, 2)
+        objp = objp * cam_config.SQUARE_SIZE_M
+
+        corners_are_found, corners = cv2.findChessboardCorners(gray, cam_config.CHECKERBOARD_SIZE, None)
+        if not corners_are_found:
+            raise RuntimeError("Could not find checkerboard corners. Ensure the checkerboard is fully visible and well-lit.")
+        
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+        corners_refined = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+        _, rvec, tvec = cv2.solvePnP(objp, corners_refined, self.K_matrix, self.D_matrix)
+
+        self.R_matrix, _ = cv2.Rodrigues(rvec)
+        self.T_vector = tvec.flatten()
+
+        # --- Save the extrinsic matrices for future use ---
+        with open(cam_config.CALIBRATION_T_MATRIX_FILEPATH, 'w') as f_T:
+            np.savetxt(f_T, self.T_vector)
+        with open(cam_config.CALIBRATION_R_MATRIX_FILEPATH, 'w') as f_R:
+            np.savetxt(f_R, self.R_matrix)
+        return
+
+    def get_live_frame(self, stream=rs.stream.color) -> np.ndarray | None:
+        """Captures and returns the latest frame for a specified stream.
+        
+        Args:
+            stream: The RealSense stream type (rs.stream.color or rs.stream.depth).
+        
+        Returns:
+            np.ndarray | None: The captured frame as a numpy array, or None if no frame is available.
+        """
+        # Wait for a coherent set of frames (usually takes a few frames to stabilize)
+        for i in range(10): # Flush pipeline with 10 frames
             frames = self.pipeline.wait_for_frames()
 
-            depth_frame = frames.get_depth_frame() if self.enable_depth else None
-            color_frame = frames.get_color_frame() if self.enable_colour else None
+        if stream == rs.stream.color:
+            color_frame = frames.get_color_frame()
+            if not color_frame:
+                return None
+            # Convert frame to numpy array
+            return np.asanyarray(color_frame.get_data())
+        
+        if stream == rs.stream.depth:
+            depth_frame = frames.get_depth_frame()
+            if not depth_frame:
+                return None
+            # Convert frame to numpy array
+            return np.asanyarray(depth_frame.get_data())
+        
+    def save_frame(self, frame: np.ndarray, file_path: str = f"data/frame_|_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png") -> None:
+        """Saves a given frame to an image file.
+        
+        Args:
+            frame (np.ndarray): The frame to save.
+            file_path (str): The file path where to save the image. Default location is "data/frame_<timestamp>.png".
 
-            with self.frame_lock:
-                if depth_frame:
-                    self.latest_depth = np.asanyarray(depth_frame.get_data())
-                if color_frame:
-                    self.latest_color = np.asanyarray(color_frame.get_data())
-
-    def _display_colour_loop(self):
-        """Background thread to display color frames."""
-        while self.running:
-            with self.frame_lock:
-                if self.latest_colour_frame is not None:
-                    cv2.imshow("Color Frame", self.latest_colour_frame)
-            cv2.waitKey(1)
-            
-    def _display_depth_loop(self, enable_colour: bool=False):
-        """Background thread to display depth frames."""
-        while self.running:
-            with self.frame_lock:
-                if self.latest_depth_frame is not None:
-                    if enable_colour:
-                        depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(self.latest_depth_frame, alpha=0.03), cv2.COLORMAP_JET)
-                    else:
-                        depth_colormap = cv2.convertScaleAbs(self.latest_depth_frame, alpha=0.03)
-                    cv2.imshow("Depth Frame", depth_colormap)
-            cv2.waitKey(1)
-
-    # ------------------------------------------------------------
-    # Public Methods
-    # ------------------------------------------------------------
-    def start(self):
-        """Starts the RealSense camera streaming in a background thread."""
-        if self.running:
-            return
-
-        # Configure RealSense streams
-        self.pipeline = rs.pipeline()
-        self.config = rs.config()
-
-        if self.enable_depth:
-            self.config.enable_stream(rs.stream.depth, self.width, self.height, rs.format.z16, self.fps)
-        if self.enable_colour:
-            self.config.enable_stream(rs.stream.color, self.width, self.height, rs.format.bgr8, self.fps)
-
-        # Start streaming
-        self.pipeline.start(self.config)
-        self.running = True
-
-        # Start capture thread
-        self.capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
-        self.capture_thread.start()
-
-        # Start display threads if needed
-        if self.show_colour:
-            self.show_colour_thread = threading.Thread(target=self._display_colour_loop, daemon=True)
-            self.show_colour_thread.start()
-        if self.show_depth:
-            self.show_depth_thread = threading.Thread(target=self._display_depth_loop, daemon=True, args=(False,))
-            self.show_depth_thread.start()
-
-    def stop(self):
-        """Stops the camera streaming."""
-        if not self.running:
-            return
-        self.running = False
-        time.sleep(0.1)  # small delay to allow thread to exit
-
-        if self.pipeline:
-            self.pipeline.stop()
-
-        self.pipeline = None
-        self.config = None
-        self.thread = None
-
-    def get_frames(self) -> tuple[np.ndarray, np.ndarray]:
+        Returns:
+            None
         """
-        Returns the most recent color and depth frames.
-        Returns (color, depth)
-        Either may be None if not enabled or not received yet.
-        """
-        with self.frame_lock:
-            color = self.latest_color.copy() if self.latest_color is not None else None
-            depth = self.latest_depth.copy() if self.latest_depth is not None else None
-        return color, depth
+        cv2.imwrite(file_path, frame)
+        return
