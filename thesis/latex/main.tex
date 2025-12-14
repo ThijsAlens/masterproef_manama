@@ -83,6 +83,9 @@ citestyle=numeric-comp, maxnames=99]{biblatex}  % make use of the biblatex packa
     },
 }
 
+%%%%%%%%%%% eigen packages %%%%%%%%%%%
+\usepackage{todonotes}
+
 
 
 %%%%%%%%%%%% choose your campus and language %%%%%%%%%%%%
@@ -116,7 +119,7 @@ citestyle=numeric-comp, maxnames=99]{biblatex}  % make use of the biblatex packa
 \campus{brugeseng}                       % Define your campus and language (append "eng" to load the English template)
                                             % campuses: denayer, geel, gent, groept, brugge (denayereng, geeleng, ghenteng, groupteng, brugeseng)
 \title{Safety mechanisms for vision-based object localization for robot grasping}
-\subtitle{Subtitle (optional)}
+\subtitle{} % invullen moest het nodig zijn, gwn typen in {}
 \forenameA{Thijs}
 \surnameA{Alens}
 \forenameB{} %keep empty if no 2nd author
@@ -124,7 +127,7 @@ citestyle=numeric-comp, maxnames=99]{biblatex}  % make use of the biblatex packa
 \academicyear{2025 - 2026}
 
 
-\promotorA[Supervisor(s)]{Laurens Devos} %for English use Supervisor(s)
+\promotorA[Supervisor(s)]{Mathias Verbeke\\Laurens Devos} %for English use Supervisor(s)
 %\promotorB[Co-promotor(en)]{My Co-promotor\\My company promotor}
 
 \loadLanguage% keep this untouched
@@ -132,13 +135,13 @@ citestyle=numeric-comp, maxnames=99]{biblatex}  % make use of the biblatex packa
 \input{abbreviations.tex}
 
 \begin{document}
-\preface%
+\preface
 
 \printnoidxglossary[type=\acronymtype]%
 \clearpage
 
-\input{chapters/hfdst1.tex}
-%\input{hfdst1}
+\input{chapters/chapter1_introduction.tex}
+\input{chapters/chapter2_literature-study.tex}
 %\input{hfdst2}
 %\input{hfdst3}
 

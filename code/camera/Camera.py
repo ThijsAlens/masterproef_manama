@@ -1,4 +1,5 @@
 import datetime
+import os
 import pyrealsense2 as rs
 import numpy as np
 import cv2
@@ -33,7 +34,8 @@ class RealSenseCamera:
         return
 
     def start_stream(self):
-        """Starts the RealSense pipeline and get the intrinsics.
+        """
+        Starts the RealSense pipeline and get the intrinsics.
 
         Args:
             None
@@ -93,6 +95,7 @@ class RealSenseCamera:
             case "load":
                 if file_path_T is None or file_path_R is None:
                     raise ValueError("File paths for T and R matrices must be provided to load previous setup.")
+                # Load T and R matrices from specified file paths
                 self.T_vector = np.loadtxt(file_path_T)
                 self.R_matrix = np.loadtxt(file_path_R)
                 return
@@ -107,9 +110,8 @@ class RealSenseCamera:
                 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
             case "live":
-                # Get a live color frame
-                input("Place the checkerboard in front of the camera and press Enter to capture a frame for calibration...")
-                img = self.get_live_frame(stream=rs.stream.color)
+                # Get a live color frame for calibration
+                img = self.get_frame(stream=rs.stream.color)
                 if img is None:
                     raise ValueError("Could not capture a color frame for calibration.")
                 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -129,15 +131,19 @@ class RealSenseCamera:
         self.R_matrix, _ = cv2.Rodrigues(rvec)
         self.T_vector = tvec.flatten()
 
-        # --- Save the extrinsic matrices for future use ---
+        # --- Save the extrinsic matrices for future use --- 
+        os.makedirs(os.path.dirname(cam_config.CALIBRATION_T_MATRIX_FILEPATH), exist_ok=True)
+        os.makedirs(os.path.dirname(cam_config.CALIBRATION_R_MATRIX_FILEPATH), exist_ok=True)
+        
         with open(cam_config.CALIBRATION_T_MATRIX_FILEPATH, 'w') as f_T:
             np.savetxt(f_T, self.T_vector)
         with open(cam_config.CALIBRATION_R_MATRIX_FILEPATH, 'w') as f_R:
             np.savetxt(f_R, self.R_matrix)
         return
 
-    def get_live_frame(self, stream=rs.stream.color) -> np.ndarray | None:
-        """Captures and returns the latest frame for a specified stream.
+    def get_frame(self, stream=rs.stream.color) -> np.ndarray | None:
+        """
+        Captures and returns the latest frame for a specified stream.
         
         Args:
             stream: The RealSense stream type (rs.stream.color or rs.stream.depth).
@@ -145,9 +151,8 @@ class RealSenseCamera:
         Returns:
             np.ndarray | None: The captured frame as a numpy array, or None if no frame is available.
         """
-        # Wait for a coherent set of frames (usually takes a few frames to stabilize)
-        for i in range(10): # Flush pipeline with 10 frames
-            frames = self.pipeline.wait_for_frames()
+        
+        frames = self.pipeline.wait_for_frames()
 
         if stream == rs.stream.color:
             color_frame = frames.get_color_frame()
@@ -163,15 +168,27 @@ class RealSenseCamera:
             # Convert frame to numpy array
             return np.asanyarray(depth_frame.get_data())
         
-    def save_frame(self, frame: np.ndarray, file_path: str = f"data/frame_|_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png") -> None:
-        """Saves a given frame to an image file.
+    def save_frame(self, color_image: np.ndarray, depth_image: np.ndarray, file_path: str = None) -> str:
+        """
+        Saves a given frame to an image file.
         
         Args:
-            frame (np.ndarray): The frame to save.
-            file_path (str): The file path where to save the image. Default location is "data/frame_<timestamp>.png".
+            color_image (np.ndarray): The color image to save.
+            depth_image (np.ndarray): The depth image to save.
+            file_path (str): The file path where to save the image. Default location is "data/frame_<timestamp>_<type>.png". Example: when "image" is given as filename, it will be saved as 'data/image_color.png' and 'data/image_depth.png'.
 
         Returns:
-            None
+            str: The file path where the image was saved.
         """
-        cv2.imwrite(file_path, frame)
-        return
+        if file_path is None:
+            timestamp = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+            os.makedirs("data", exist_ok=True)
+            color_file_path = f"data/frame_{timestamp}_color.png"
+            depth_file_path = f"data/frame_{timestamp}_depth.png"
+        else:
+            color_file_path = file_path.replace(".png", "_color.png")
+            depth_file_path = file_path.replace(".png", "_depth.png")
+
+        cv2.imwrite(color_file_path, color_image)
+        cv2.imwrite(depth_file_path, depth_image)
+        return color_file_path, depth_file_path
