@@ -88,7 +88,7 @@ def main():
     # Initialize the camera
     camera = RealSenseCamera()
     camera.start_stream()
-    camera.setup_matrices(mode="live")
+    # camera.setup_matrices(mode="live")
 
     while True:
         # Capture and show frames

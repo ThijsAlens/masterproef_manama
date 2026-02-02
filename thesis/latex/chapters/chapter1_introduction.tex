@@ -6,14 +6,10 @@
 
 \chapter{Introduction}\label{ch:introduction}
 
-\section{Positioning}
+\section{Positioning} \label{ch:introduction_section:positioning}
 We are living in a world where automation is adopted at a rapidly increasing pace.
 Luggage gets sorted and autonomously transported across an airport, autonomous vacuum cleaners are being used daily, medicines are being produced with extreme cleanliness, etc.
 This also applies to robotics, where robots are slowly becoming more apparent in factory's and warehouses, improving efficiency, quality, and safety.
-
-% While these new technologies bring many advantages, they also introduce new challenges.
-% For example, robots are often designed to operate in structured and controlled environments, falling short when faced with dynamic and unpredictable settings, which are not uncommon in real-world scenarios.
-% When operating in such environments, robots need to be able to adapt to changes, or at least be able to detect them and inform a human operator.
 
 These robots need systems to operate properly, now more then ever, these systems are often based on \gls{ai}.
 More precisely, \gls{cv}, a subdomain of \gls{ai} which specialises in enabling computers to interpret and make decisions based on visual data via camera's, can be used to detect and localize objects, making it possible for the robot to process them.
@@ -21,9 +17,12 @@ But also a more general \gls{ai} could be used to plan the robot's actions and c
 Furthermore, some systems are trained to monitor certain processes, detect defects to finished products, or even predict maintenance needs.
 Its use thus does not only bring more efficiency, but also some gains in quality and enables for much more complex tasks for a robot to excecute.
 
-\todo{Nog iets over uncertainty AI}
+These real world scenarios require the \gls{ai} systems to be robust and reliable.
+However, \gls{ai} systems often struggle when faced with situations that differ from their training data, leading to unreliable predictions.
+Systems should therefore be able to express their uncertainty about their predictions, enabling safety mechanisms to prevent the robot from taking actions based on uncertain predictions.
+Uncertainty-aware \gls{ai} models are able to do this, by not only outputting a prediction, but also an uncertainty score about this prediction.
 
-\section{Problem statement}
+\section{Problem statement} \label{ch:introduction_section:problem-statement}
 While an \gls{ai} system has many advantages in a factory setting, it also introduces new problems that need taken care of.
 The good but mostly bad thing, in such a setting, with such systems is that it will always output something, even when it is not sure about its output. 
 Meaning that when it were to be unsure about what it should output, it will not inform the user about this and continue operating as normal.
@@ -35,8 +34,9 @@ Most training data is gathered in controlled environments, where all conditions 
 However, when used in real-world scenarios with conditions different from the training environment, like different lighting conditions, some dust on the camera lens causing some distortion, someone turning the lights off, etc. the system could become a lot worese at its task.
 Other unexpected events, like a human operator placing the wrong object for the robot to pick up or a sudden movement of an already placed object, can also throw of the \gls{ai} system.
 
-\section{Objectives}
-This thesis aims to adress these issues by developing and evaluating uncertainty-aware object localization models for a robot arm capable of reliably indicating when their predictions may be unreliable, particularly in challenging real-world conditions. By making the models uncertainty-aware, safety mechanisms that prevent the robot from taking actions based on uncertain predictions can be implemented, thereby reducing the risk of errors and accidents.
+\section{Objectives} \label{ch:introduction_section:objectives}
+This thesis aims to adress these issues by developing and evaluating uncertainty-aware object localization models for a robot arm capable of reliably indicating when their predictions may be unreliable, particularly in challenging real-world conditions. 
+By making the models uncertainty-aware, safety mechanisms that prevent the robot from taking actions based on uncertain predictions can be implemented, thereby reducing the risk of errors and accidents.
 
 The primary research question is:
 How can we develop uncertainty-aware object localization models for a robot arm that can effectively identify and communicate uncertainty in their predictions, particularly in challenging real-world conditions?
