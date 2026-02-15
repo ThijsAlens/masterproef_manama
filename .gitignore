@@ -207,7 +207,8 @@ marimo/_lsp/
 __marimo__/
 
 # custom additions
-thesis/latex/build
+thesis/latex/build/*
+!thesis/latex/build/main.pdf
 thesis/latex/_minted-main
 code/robot_demonstrator
 code/data
