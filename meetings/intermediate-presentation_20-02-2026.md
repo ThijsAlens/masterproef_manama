@@ -1,0 +1,5 @@
+- Capture real-world coordinates door lijnen aan de zijkant (eventueel plexi)
+- nadenken over hoe best experimenten doen
+- niet te veel andere technieken meer doen (tijdsgebrek en datagebrek)
+- object-detection is moeilijk met de hoeveelheid data dat er is -> eerder regressiemodel dat coordinaten (pixel of real-world) van een object detecteerd
+- vergelijking tussen pixelcoordinaten + translatie achteraf vs ineens real-world coordinaten. (extra uncertainty in de translatie)
