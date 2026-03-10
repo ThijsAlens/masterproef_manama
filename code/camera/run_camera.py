@@ -15,8 +15,8 @@ def main():
     print_calibration_prompt = True
     
     while True:
-        color_image = camera.get_frame(stream=rs.stream.color)
-        depth_image = camera.get_frame(stream=rs.stream.depth)
+        color_image = camera.get_frame(stream=rs.stream.color, straighten=False)
+        depth_image = camera.get_frame(stream=rs.stream.depth, straighten=False)
         depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
         
         cv2.imshow("Color Image", color_image)
@@ -32,7 +32,7 @@ def main():
             if key == 13:  # Check for Enter key press
                 try:
                     print("Attempting calibration...")
-                    camera.setup_matrices(mode="live")
+                    camera.setup_matrices(mode="image")
                     
                     print("Camera calibrated successfully.")
                     is_calibrated = True

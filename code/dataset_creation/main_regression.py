@@ -5,6 +5,7 @@ import json
 
 import dataset_creation.config as config
 from camera.Camera import RealSenseCamera
+from dataset_creation.calculate_real_world_coordinates import calculate_real_world_coordinates
 
 current_center: tuple[float, float] = None
 
@@ -85,6 +86,9 @@ def main():
                                     "y": current_center[1]
                                 }
                             }, f, indent=4)
+
+                        # 3. Calculate real world coordinates and save to JSON
+                        # calculate_real_world_coordinates(img_path.replace(".png", "_color.png"), json_path)
                             
                         cv2.destroyWindow("Annotate")
                         break

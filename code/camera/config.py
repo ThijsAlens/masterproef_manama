@@ -9,6 +9,10 @@ FPS = 30                  # Frames per second for the camera
 CHECKERBOARD_SIZE = (6, 9)  # Number of inner corners per a chessboard row and column
 SQUARE_SIZE_M = 0.0253      # Size of a square in your defined unit
 
-CALIBRATION_IMAGE_PATH = "calibration/checkerboard.png"                         # Path to the calibration image file
+CALIBRATION_IMAGE_PATH = "camera/checkerboard.png"                         # Path to the calibration image file
+CALIBRATION_REAL_WORLD_PATH = "camera/lines.png"
 CALIBRATION_T_MATRIX_FILEPATH = "data/regression/calibration/camera_translation_matrix.npy"     # Path to save/load the camera translation matrix
 CALIBRATION_R_MATRIX_FILEPATH = "data/regression/calibration/camera_rotation_matrix.npy"        # Path to save/load the camera rotation matrix
+
+CALIBRATION_BLACK_THRESHOLD = 70  # Threshold for binary inverse thresholding to detect black lines
+DISTANCE_BETWEEN_LINES_MM = 200 # Real-world distance between the lines in millimeters (used for scaling)

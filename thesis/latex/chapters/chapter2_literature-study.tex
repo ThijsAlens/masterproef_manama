@@ -75,10 +75,23 @@ If an object that was not expected to be in the enviorment, a bird for example, 
 This is not because the enviorment was insufficiently specified, but because of the bird being there unexpectedly.
 
 \section{Quantifying uncertainty} \label{ch:literature-study_section:quantifying-uncertainty}
-Models who can handle / quantify the uncertainties mentioned in~\ref{ch:literature-study_section:uncertainty-in-ai} are therefore sought-after in safety-critical applications.
-A way to reason about uncertainty in \glspl{dnn} is by using the Bayesian framework
-The uncertainty of a given prediction of a model, also called predictive uncertainty, is depended on two things: the uncertainty of the data (data uncertainty) and the uncertainty of the model (model uncertainty)~\cite{src:survey-uncertainty-dnn}.
+Models who can handle / quantify the uncertainties mentioned in~\ref{ch:literature-study_section:uncertainty-in-ai} are therefore sought-after in safety-critical applications like robot arm grasping.
+When using a model in practice, we are interested in the uncertainty on the prediction of the model, also called predictive uncertainty.
+This is depended on two things: the uncertainty of the data (data uncertainty), which falls under the aleatoric uncertainty, and the uncertainty of the model (model uncertainty), which falls under the epistemic uncertainty~\cite{src:survey-uncertainty-dnn}.
 
+\subsection{Aleatoric uncertainty} \label{ch:literature-study_section:quantifying-uncertainty_subsection:aleatoric-uncertainty}
+When we want to quantify the aleatoric uncertainty, we need to capture how mistakes can be made during the capturing and processing of the data.
+The conventional way of doing this is by using a well generalized model, which is trained on a large dataset.
+This makes the model learn the general distribution of the data.
+If the model is not well generalized, it learns the noisy data without real knowledge about the more general distribution of the data.
+\ref{fig:overfitting} shows an example of a model which is not well generalized, and thus captures the noise in the data, leading to a high aleatoric uncertainty.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{static/overfitting.png}
+    \caption{The blue line represents a model which is not well generalized, and thus captures the noise in the data. The red line represents a model which is well generalized, and thus captures the general distribution of the data.}
+    \label{fig:overfitting}
+\end{figure}
 
 \section{Uncertainty-aware AI models} \label{ch:literature-study_section:uncertainty-aware-ai-models}
 \subsection{Bayesian Neural Networks} \label{ch:literature-study_section:uncertainty-aware-ai-models_subsection:bayesian-neural-networks}
