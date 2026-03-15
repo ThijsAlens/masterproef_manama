@@ -4,3 +4,28 @@
 In this chapter, we will discuss the dataset created for training and evaluating the uncertainty-aware object localization models.
 We will outline the requirements for the dataset based on the problem statement and objectives defined in \cref{ch:introduction}.
 Furthermore, we will describe the data collection process, including the setup and annotation used.
+
+\section{Setup}\label{ch:dataset_section:setup}
+The setup we used is shown in \cref{fig:setup}, where we have a realsence camera mounted on a pole in front of a table with a robot arm on it.
+The view of the camera is a bit wider and longer then the table, but only the part of the table whithin the black boarder lines is usable by the robot.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{static/setup.png}
+    \caption{The setup used.}
+    \label{fig:setup}
+\end{figure}
+
+\subsection{Realsense camera}
+Realsense camera's are a type of camera which capture both RGB and depth information, the one we used specificially is the ``Realsense Depth Camera D415''.
+The realsense camera's have good support in the form of RealSense SDK~\cite{src:RealSense-SDK}.
+It is a library which supports different languages like Python, C\#, ROS, etc. and makes it easy to use the Realsense camera's
+We will use its Python binding, which is called ``pyrealsense2''.
+It allows us to easily setup both and handle the RGB and depth camera streams independently from each other.
+It also contains information about the intrinsic parameters of the camera, these embody the focal length and the principal point of the camera.
+Its importance will become clear in \cref{ch:dataset_section:setup_subsection:translation-from-pixel-to-world-coordinates}.
+
+\subsection{Table and robot arm}
+
+
+\subsection{Translation from pixel to world coordinates} \label{ch:dataset_section:setup_subsection:translation-from-pixel-to-world-coordinates}

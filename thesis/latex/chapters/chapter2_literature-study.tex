@@ -74,6 +74,28 @@ In the factory example, the model is trained for a sertain enviorment and object
 If an object that was not expected to be in the enviorment, a bird for example, enters the camera's viewpoint, it can cause the model to be uncertain on what to do, since it has never seen a bird before. 
 This is not because the enviorment was insufficiently specified, but because of the bird being there unexpectedly.
 
+\subsection{Sources of uncertainty} \label{ch:literature-study_section:uncertainty-in-ai_subsection:sources-of-uncertainty}
+In our problem of object localization for robot arm grasping, there are a few sources of uncertainty we want to tackle.
+
+First of all, the aleatoric uncertainty of the data, which will be there because of measurement errors.
+While we will try to minimize these errors as much as possible, they will still be present in the data.
+However, as mentioned before, these errors are not the biggest concerns as they could be a way to regulize a model, as long as they are kept subtle.
+Even more, they will fix themselfs if the models are trained properly.
+
+Secondly, the errors due to the translation from pixel space to real world coordinates.
+The easiest way to train a model fitted for our task, is to have a dataset containing an image of the object and the corresponding pixel coordinates of the center of the object.
+However, it should be noted that after the \gls{ai} has predicted the pixel coordinates of the center of the object, these coordinates need to be translated to real world coordinates for the robot arm to be able to grasp the object.
+This translation has a lot of opportunities for errors, which can cause a lot of uncertainty in the final output of the model, uncertainty the model does not account for.
+It is better to train a model which directly outputs the real world coordinates of the center of the object, as this way the model can learn to output the uncertainty of the translation from pixel space to real world coordinates.
+\cref{fig:pixel-vs-real-world} visually shows the difference between training a model to output pixel coordinates and training a model to output real world coordinates and its effects on the uncertaitny.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{static/pixel-vs-real-world.png}
+    \caption{The left side shows a model trained to output pixel coordinates, which does not account for the uncertainty of the translation from pixel space to real world coordinates. The right side shows a model trained to output real world coordinates, which can learn to account for the uncertainty of the translation from pixel space to real world coordinates.}
+    \label{fig:pixel-vs-real-world}
+\end{figure}
+
 \section{Quantifying uncertainty} \label{ch:literature-study_section:quantifying-uncertainty}
 Models who can handle / quantify the uncertainties mentioned in~\ref{ch:literature-study_section:uncertainty-in-ai} are therefore sought-after in safety-critical applications like robot arm grasping.
 When using a model in practice, we are interested in the uncertainty on the prediction of the model, also called predictive uncertainty.
@@ -84,7 +106,7 @@ When we want to quantify the aleatoric uncertainty, we need to capture how mista
 The conventional way of doing this is by using a well generalized model, which is trained on a large dataset.
 This makes the model learn the general distribution of the data.
 If the model is not well generalized, it learns the noisy data without real knowledge about the more general distribution of the data.
-\ref{fig:overfitting} shows an example of a model which is not well generalized, and thus captures the noise in the data, leading to a high aleatoric uncertainty.
+\cref{fig:overfitting} shows an example of a model which is not well generalized, and thus captures the noise in the data, leading to a high aleatoric uncertainty.
 
 \begin{figure}
     \centering
@@ -92,6 +114,17 @@ If the model is not well generalized, it learns the noisy data without real know
     \caption{The blue line represents a model which is not well generalized, and thus captures the noise in the data. The red line represents a model which is well generalized, and thus captures the general distribution of the data.}
     \label{fig:overfitting}
 \end{figure}
+
+\subsection{Epistemic uncertainty} \label{ch:literature-study_section:quantifying-uncertainty_subsection:epistemic-uncertainty}
+Quantifying epistemic uncertainty is a bit more complex to tackle, as it requires multiple models, hyperparameters, different usage of data etc. to be tested.
+There are different methods to account for this uncertainty, especially in theory.
+First of all, we can use a Bayesian approach to model the uncertainty of the model parameters (see~\ref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:bayesian-neural-networks}).
+This is a very principled way to model the uncertainty, as it needs an infinite amount of models to capture the uncertainty of the model parameters, which is not possible in practice.
+Another way to model the uncertainty of the model parameters is by using an ensemble of models (see~\ref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:deep-ensemble-methods}).
+This is a more practical way to model the uncertainty, as it is an approximation of the Bayesian approach, using a finite number of models to capture the uncertainty of the model parameters.
+A third way to model the uncertainty of the model parameters is by using dropout during inference (see~\ref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:monte-carlo-dropout}).
+\gls{mc} dropout, like the ensemble method, is more practical than the Bayesian approach.
+It keeps dropout turned on during inference, which allows it to capture the uncertainty of the model parameters by generating different outputs for the same input, which can then be combined to get a final output and uncertainty score.
 
 \section{Uncertainty-aware AI models} \label{ch:literature-study_section:uncertainty-aware-ai-models}
 \subsection{Bayesian Neural Networks} \label{ch:literature-study_section:uncertainty-aware-ai-models_subsection:bayesian-neural-networks}
@@ -166,7 +199,3 @@ Reusing the example of classifying images of disks and cubes, assuming we make 3
 \end{itemize}
 Averaging these distributions results in the final output distribution: [0.63 (disk), 0.37 (cube)].
 The final output is thus 'disk' with an uncertainty score of 0.63.
-
-\section{Datasets for uncertainty-aware models} \label{ch:literature-study_section:datasets-for-uncertainty-aware-models}
-
-\section{Safety mechanisms for uncertain predictions} \label{ch:literature-study_section:safety-mechanisms-for-uncertain-predictions}
