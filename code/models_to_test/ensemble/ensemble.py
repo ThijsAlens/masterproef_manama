@@ -29,7 +29,7 @@ class DeepEnsemble:
          Returns:
             tuple[torch.Tensor, torch.Tensor]: The ensemble prediction and uncertainty (mean and variance of the predictions from the individual models).
         """
-        X.to(self.device)
+        X = X.to(self.device)
         with torch.no_grad():
             predictions = []
             for model in self.models:
@@ -52,10 +52,8 @@ class SimpleCNNRegressionModel(torch.nn.Module):
     def __init__(self, input_channels: int = 3, hidden_channels: list[int] = [16], output_size: int = 2):
         super(SimpleCNNRegressionModel, self).__init__()
         
-        # Use a ModuleList to store layers for dynamic construction
-        self.conv_layers = torch.nn.ModuleList()
-        
         # Convolutional Layers (with ReLU and MaxPool)
+        self.conv_layers = []
         current_channels = input_channels
         for h_channels in hidden_channels:
             self.conv_layers.append(torch.nn.Conv2d(current_channels, h_channels, kernel_size=3, padding=1))
