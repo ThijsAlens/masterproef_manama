@@ -16,16 +16,32 @@ The view of the camera is a bit wider and longer then the table, but only the pa
     \label{fig:setup}
 \end{figure}
 
-\subsection{Realsense camera}
+\subsection{Realsense camera}\label{ch:dataset_section:setup_subsection:realsense-camera}
 Realsense camera's are a type of camera which capture both RGB and depth information, the one we used specificially is the ``Realsense Depth Camera D415''.
 The realsense camera's have good support in the form of RealSense SDK~\cite{src:RealSense-SDK}.
-It is a library which supports different languages like Python, C\#, ROS, etc. and makes it easy to use the Realsense camera's
+It is a library which supports different languages like Python, C\#, ROS, etc. and makes it easy to use the Realsense camera's.
 We will use its Python binding, which is called ``pyrealsense2''.
 It allows us to easily setup both and handle the RGB and depth camera streams independently from each other.
 It also contains information about the intrinsic parameters of the camera, these embody the focal length and the principal point of the camera.
 Its importance will become clear in \cref{ch:dataset_section:setup_subsection:translation-from-pixel-to-world-coordinates}.
 
-\subsection{Table and robot arm}
+\subsection{Table and robot arm}\label{ch:dataset_section:setup_subsection:table-and-robot-arm}
+\paragraph{Table}
+The table is used as support for the the camera, robot arm and objects.
+As can be seen in \cref{fig:setup}, the table is equipped with a grid of black lines in the shape of a rectangle and a black square.
+Each line is 2cm apart from each other and is used as a reference so we can capture the real-world coordinates of the objects.
+The black square is used as the origin of this maden coordinate system, more specifically the bottom right corner of the square is the origin.
+The x-axis goes horizontally (relative to the camera's \gls{pov}) to the right, the y-axis goes vertically downwards.
+There is no z-axis defined as all the objects are the same height, the robot arm moet bijgevolg enkel de x and y coordinates van de objecten weten om ze te kunnen grijpen.
+More information about the specific use of the grid will be given in \cref{ch:dataset_section:setup_subsection:translation-from-pixel-to-world-coordinates}.
+
+\paragraph{Robot arm}
+The robot arm used in our setup is the ``ABB IRB 1200''~\cite{src:ABB-IRB1200}.
+It is equipped with a vacuum gripper, which is used to grasp the objects on the table.
+The robot arm is controlled by a computer, which sends commands to the robot arm to move to specific coordinates and to open and close the gripper.
+Previous work with this specific robot arm~\cite{src:robot-demonstrator} will be used to control it.
+
+\subsection{Labeling}\label{ch:dataset_section:setup_subsection:labeling}
 
 
 \subsection{Translation from pixel to world coordinates} \label{ch:dataset_section:setup_subsection:translation-from-pixel-to-world-coordinates}

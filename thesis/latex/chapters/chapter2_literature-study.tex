@@ -87,17 +87,11 @@ The easiest way to train a model fitted for our task, is to have a dataset conta
 However, it should be noted that after the \gls{ai} has predicted the pixel coordinates of the center of the object, these coordinates need to be translated to real world coordinates for the robot arm to be able to grasp the object.
 This translation has a lot of opportunities for errors, which can cause a lot of uncertainty in the final output of the model, uncertainty the model does not account for.
 It is better to train a model which directly outputs the real world coordinates of the center of the object, as this way the model can learn to output the uncertainty of the translation from pixel space to real world coordinates.
-\cref{fig:pixel-vs-real-world} visually shows the difference between training a model to output pixel coordinates and training a model to output real world coordinates and its effects on the uncertaitny.
-
-\begin{figure}
-    \centering
-    \includegraphics[width=0.8\textwidth]{static/pixel-vs-real-world.png}
-    \caption{The left side shows a model trained to output pixel coordinates, which does not account for the uncertainty of the translation from pixel space to real world coordinates. The right side shows a model trained to output real world coordinates, which can learn to account for the uncertainty of the translation from pixel space to real world coordinates.}
-    \label{fig:pixel-vs-real-world}
-\end{figure}
+This will be further discussed in \cref{ch:dataset_section:setup_subsection:labeling}.
 
 \section{Quantifying uncertainty} \label{ch:literature-study_section:quantifying-uncertainty}
-Models who can handle / quantify the uncertainties mentioned in~\ref{ch:literature-study_section:uncertainty-in-ai} are therefore sought-after in safety-critical applications like robot arm grasping.
+Models who can handle / quantify the uncertainties as described in~\ref{ch:literature-study_section:uncertainty-in-ai} are very sought-after in safety-critical applications like robot arm grasping.
+For our problem of object localization for robot arm grasping, it is very important to know what factors can cause the model to be uncertain about its predictions and how do we quantify this.
 When using a model in practice, we are interested in the uncertainty on the prediction of the model, also called predictive uncertainty.
 This is depended on two things: the uncertainty of the data (data uncertainty), which falls under the aleatoric uncertainty, and the uncertainty of the model (model uncertainty), which falls under the epistemic uncertainty~\cite{src:survey-uncertainty-dnn}.
 
@@ -127,7 +121,74 @@ A third way to model the uncertainty of the model parameters is by using dropout
 It keeps dropout turned on during inference, which allows it to capture the uncertainty of the model parameters by generating different outputs for the same input, which can then be combined to get a final output and uncertainty score.
 
 \section{Uncertainty-aware AI models} \label{ch:literature-study_section:uncertainty-aware-ai-models}
+``Conventional'' \gls{ai} models (\glspl{mlp}, \glspl{cnn}, \glspl{gan}, YOLO's, etc.) are not designed to be uncertainty-aware, meaning they do not have a way to quantify the uncertainty of their predictions.
+This makes that new methods had to be developed to make \gls{ai} models uncertainty-aware.
+The ones we will be discussing, all have their foundation in the bayesian way of thinking, which is a very principled, mathematically-sound way to model uncertainty.
+
 \subsection{Bayesian Neural Networks} \label{ch:literature-study_section:uncertainty-aware-ai-models_subsection:bayesian-neural-networks}
+A \gls{nn} is a function which maps an input $x \in X$ to an output $y \in Y$ using a model $f_{\theta}$, as shown in \cref{eq:nn}.
+\begin{equation}
+    y = f_{\theta}(x)
+    \label{eq:nn}
+\end{equation}
+In our case, the input vector $x$ is an image of an object, and the output vector $y$ is the predicted coordinates of the center of the object.
+The parameters $\theta$ of the model are learned during the training phase, where the model is trained on a dataset consisting of input-output pairs.
+
+\paragraph{Aleatoric uncertainty}\cite{src:scalable-bayesian-deep-learning}
+For regression problems, the most conventional way to predict targets is to let the model directly predict the targets using \cref{eq:nn} directly.
+Its parameters $\theta$ are learned by minimizing a loss function (like the $L^2$ or $L^1$ loss) on the training data.
+However, this does not allow the model to capture the aleatoric uncertainty of the data, as it only predicts a single value for each target, without any indication of how certain it is about this prediction.
+Instead of predicting a single value for each target, the model can be designed to predict a distribution over the targets as showed by \cref{eq:prob-dist}.
+By asuming a Gaussian distribution for the targets, the model can be designed to predict the mean $\mu$ and variance $\sigma^2$ of the distribution, as shown in \cref{eq:nn-aleatoric-vec}.
+
+\begin{subequations}
+\label{eq:nn-aleatoric}
+    \begin{align}
+        p(y|x, \theta) &= \mathcal{N}(y; \mu_{\theta}(x), \sigma^2_{\theta}(x)), \label{eq:prob-dist} \\
+        f_\theta(x) &= [\mu_{\theta}(x), \log\sigma^2_{\theta}(x)]^T \label{eq:nn-aleatoric-vec}
+    \end{align}
+\end{subequations}
+
+The variance $\sigma^2$ captures the aleatoric uncertainty of the data, while the mean $\mu$ captures the prediction of the model.
+The model can be trained by minimizing the negative log-likelihood of the data under the predicted distribution, as shown in \cref{eq:nn-aleatoric-loss}.
+\begin{equation}
+    min(-\sum_{i} \log(p(y_i|x_i, \theta)))
+    \label{eq:nn-aleatoric-loss}
+\end{equation}
+
+\paragraph{Epistemic uncertainty}\cite{src:scalable-bayesian-deep-learning}\cite{src:bayesian-deep-learning-epistemic}
+To capture the uncertainty in the model parameters $\theta$, we need the Bayesian approach, otherwise referred to as Bayesian inference.
+In the Bayesian approach, we place a prior distribution over the model parameters, which captures our beliefs about the parameters before seeing any data.
+Using the data, we can then compute the posterior distribution over the model parameters $\theta$ (given in \cref{eq:posterior-distr}), which captures our updated beliefs about the parameters after seeing the data.
+
+\begin{equation}
+    p(\theta|X, Y) = \frac{p(Y|X, \theta)p(\theta)}{p(Y|X)}
+    \label{eq:posterior-distr}
+\end{equation}
+
+$p(\theta)$ is the prior distribution over the model parameters, which can be chosen based on our beliefs about the parameters.
+When there are no prior beliefs of the model's parameters, its most commenly chosen to use a Gaussian distribution.
+However, its choise can be a way to regulize the model~\cite{src:lecture-notes-bayesian-learning}:
+
+\begin{itemize}
+    \item $L^2$ regularization is equivalent to using a Gaussian prior.
+    \item $L^1$ regularization is equivalent to using a Laplace prior.
+\end{itemize}
+
+$p(Y|X, \theta)$ is the likelihood of the data given the model parameters, which captures how well the model fits the data.
+This is calculated by passing the whole dataset through the model with a softmax output layer and calculating the probability of the data under the predicted distribution.
+
+$p(Y|X)$ is the evidence, which is a normalizing constant that ensures that the posterior distribution is a valid probability distribution.
+It is calculated by integrating the likelihood over all possible values of the model parameters, as shown in \cref{eq:evidence}.
+
+\begin{equation}
+    p(Y|X) = \int p(Y|X, \theta)p(\theta)d\theta
+    \label{eq:evidence}
+\end{equation}
+
+However, computing the evidence is not feasible in practice, as it requires integrating over all possible values of the model parameters, of which a \gls{dnn} has many.
+As by consequence, the posterior distribution is also not feasible to compute, as it requires computing the evidence.
+This is why we need to use approximations to compute the posterior distribution.
 
 \subsection{Deep Ensemble Methods} \label{ch:literature-study_section:uncertainty-aware-ai-models_subsection:deep-ensemble-methods}
 A deep ensemble method~\cite{src:deep-ensemble-methods} rests on the idea that a combination of (simpler) models can be trained and perform better then a single (complex) model.
