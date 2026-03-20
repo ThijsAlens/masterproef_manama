@@ -63,8 +63,20 @@ class RealSenseCamera:
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
         equalized = clahe.apply(gray)
         blur_gray = cv2.GaussianBlur(equalized,(3, 3),0)
-        edges = cv2.Canny(blur_gray, 50, 150)
+        edges = cv2.Canny(blur_gray, cam_config.CANNY_LOW_THRESHOLD, cam_config.CANNY_HIGH_THRESHOLD)
         contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        cv2.drawContours(img, contours, -1, (0, 255, 0), 2)  # Draw contours for visualization
+        cv2.imshow("Contours", img)
+        while True:
+            key = cv2.waitKey(1) & 0xFF
+            if key == 13: # Enter to continue after visualizing contours
+                cv2.destroyWindow("Contours")
+                break
+            if key == ord('r'): # Press 'R' to reprocess the image if contours are not satisfactory
+                cv2.destroyWindow("Contours")
+                return self._create_pixel_to_real_world_map(mode=mode)
+        cv2.destroyWindow("Contours")
+
 
         centroids = []
         for contour in contours:
@@ -213,8 +225,9 @@ class RealSenseCamera:
 
         # --- Set up the pixel to real world coordinate mapping for the current calibration ---
         if mode == "live":
-            input("Change to the lines to calibrate the pixel to real world mapping and press Enter to continue...")
-        self.pixel_to_real_world_map = self._create_pixel_to_real_world_map(mode=mode)
+            print("Change to the lines to calibrate the pixel to real world mapping and press Enter to continue...")
+            cv2.waitKey(0)
+        # self.pixel_to_real_world_map = self._create_pixel_to_real_world_map(mode=mode)
         return
 
     def get_frame(self, stream=rs.stream.color, straighten=True) -> np.ndarray | None:
@@ -238,7 +251,7 @@ class RealSenseCamera:
             # Convert frame to numpy array
             img = np.asanyarray(color_frame.get_data())
             if straighten:
-                img = self.straighten_frame(img, None)[0]
+                img, _ = self.straighten_frame(img, None)
             return img
         
         if stream == rs.stream.depth:
@@ -308,7 +321,7 @@ class RealSenseCamera:
         undistorted_color_img = corrected_color_img[y:y+h, x:x+w] if corrected_color_img is not None else None
         undistorted_depth_img = corrected_depth_img[y:y+h, x:x+w] if corrected_depth_img is not None else None
 
-        return undistorted_color_img, undistorted_depth_img
+        return (undistorted_color_img, undistorted_depth_img)
     
     def convert_pixel_to_real_world(self, pixel_coords: tuple[int, int]) -> tuple[float, float]:
         """
