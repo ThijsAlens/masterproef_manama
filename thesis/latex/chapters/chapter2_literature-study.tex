@@ -6,11 +6,10 @@ First, we will elaborate on what uncertainty is and different ways it can sneak 
 Next, we will discuss how this uncertainty can be quantified.
 After that, we will dive into different existing methods to make \gls{ai} models uncertainty-aware and discuss how their ideas can be applied to object detection.
 Following that, we will look into ways data is gathered to train and evaluate uncertainty-aware models.
-To close, we will briefly discuss safety mechanisms that can be implemented to prevent a robot from taking actions based on uncertain predictions.
 
 \section{Uncertainty in AI} \label{ch:literature-study_section:uncertainty-in-ai}
 There are lots of complex systems that need to be modeled and understood.
-These systems can be modelled using \gls{ai} models as they offer a way can grasp the complexity of these systems and operate them in the most efficient / safe way possible.
+These systems can be modelled using \gls{ai} models as they offer a way to grasp the complexity of these systems and operate them in the most efficient / safe way possible.
 However, these are, just as humans, not perfect and can make mistakes.
 When using normal (non uncertainty-aware) \gls{ai} models, these mistakes are not communicated with the user. 
 For example, when a \gls{cnn} is used to detect an object on a conveyor belt, it will output the class of the object it thinks is on the conveyor belt, without any indication of how certain it is about this prediction.
@@ -27,7 +26,7 @@ When gathering data, mistakes can be made when measuring.
 These can come from limitations of the measurement devices or incorrect / inprecise labeling of the data. 
 An important note to make is that these mistakes can be a way to regulize a network, if it stays subtle.
 
-Let's take a regression problem as an example, where a model needs to predict a pair of \(x\) and \(y\) values for the center of an object.
+As an example, we will use the regression problem we are trying to solve in this thesis where a model needs to predict a pair of \(x\) and \(y\) values for the center of an object.
 It could be that the camera used for the capturing of data has a low resolution. 
 This could lead to an object, which needed to be detected, getting lost because of the lack of pixels in the image. 
 Even more, it could lead to inaccurate annotation of the center of the object, as its center is labeled as \((x_1, y_1)\), when it is in fact \((x_1+\delta, y_1+\epsilon)\) (\(\delta\) and \(\epsilon\) being small errors in the measurement).
@@ -36,6 +35,7 @@ Even more, it could lead to inaccurate annotation of the center of the object, a
 Epistemic uncertainty is the uncertainty that comes from noise in the model or its training process.
 This can have many different causes like the architecture of the model, the training procedure, lack of knowledge because of insufficient or irrelevant training data.
 Its nature is, in theory, reducible, meaning that by gathering more / better data, using a better model architecture, etc., this uncertainty can be reduced.
+However, doing this in practice, comes with a big computational cost, and thus it is not always possible to reduce this uncertainty.
 
 \paragraph{Variability in real world situations} \label{ch:literature-study_section:uncertainty-in-ai_subsection:epistemic-uncertainty_paragraph:variability-in-real-world-situations}
 The real world changes constantly, resulting in different settings where objects can behave / look differently. 
@@ -53,7 +53,7 @@ Because the dataset does not cover the new conditions, the trained \gls{dnn} fai
 The structure of a network differs from model to model, with each model having its advantages and disadvantages on the performence, and thus the uncertainty of the predictions.
 
 Suppose a factory requires the previously discussed regression model to best fit their need. 
-There are a lot of model architectures available, a fully connected network, a \gls{cnn}, a U-net, etc.
+There are a lot of model architectures available, a \gls{mlp}, a \gls{cnn}, a U-net, a \gls{gan}, a YOLO-network etc.
 Each model has its own number of layers, connections, activation functions, etc.
 All these networks will have its their own capabilities and thus uncertainty.
 
@@ -80,17 +80,16 @@ In our problem of object localization for robot arm grasping, there are a few so
 First of all, the aleatoric uncertainty of the data, which will be there because of measurement errors.
 While we will try to minimize these errors as much as possible, they will still be present in the data.
 However, as mentioned before, these errors are not the biggest concerns as they could be a way to regulize a model, as long as they are kept subtle.
-Even more, they will fix themselfs if the models are trained properly.
 
 Secondly, the errors due to the translation from pixel space to real world coordinates.
 The easiest way to train a model fitted for our task, is to have a dataset containing an image of the object and the corresponding pixel coordinates of the center of the object.
 However, it should be noted that after the \gls{ai} has predicted the pixel coordinates of the center of the object, these coordinates need to be translated to real world coordinates for the robot arm to be able to grasp the object.
-This translation has a lot of opportunities for errors, which can cause a lot of uncertainty in the final output of the model, uncertainty the model does not account for.
+This translation has a lot of opportunities for errors, which can cause a lot of uncertainty in the final output, uncertainty the model does not account for.
 It is better to train a model which directly outputs the real world coordinates of the center of the object, as this way the model can learn to output the uncertainty of the translation from pixel space to real world coordinates.
 This will be further discussed in \cref{ch:dataset_section:setup_subsection:labeling}.
 
 \section{Quantifying uncertainty} \label{ch:literature-study_section:quantifying-uncertainty}
-Models who can handle / quantify the uncertainties as described in~\ref{ch:literature-study_section:uncertainty-in-ai} are very sought-after in safety-critical applications like robot arm grasping.
+Models who can handle / quantify the uncertainties as described in~\ref{ch:introduction_section:positioning} are very sought-after in safety-critical applications like robot arm grasping.
 For our problem of object localization for robot arm grasping, it is very important to know what factors can cause the model to be uncertain about its predictions and how do we quantify this.
 When using a model in practice, we are interested in the uncertainty on the prediction of the model, also called predictive uncertainty.
 This is depended on two things: the uncertainty of the data (data uncertainty), which falls under the aleatoric uncertainty, and the uncertainty of the model (model uncertainty), which falls under the epistemic uncertainty~\cite{src:survey-uncertainty-dnn}.
