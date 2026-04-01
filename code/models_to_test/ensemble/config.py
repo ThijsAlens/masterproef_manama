@@ -1,8 +1,8 @@
 SEED = 1
 
-PATH_TO_TRAIN_DATA = "path/to/training_dataset"
-PATH_TO_VALIDATION_DATA = "path/to/validation_dataset"
-PATH_TO_TEST_DATA = "path/to/test_dataset"
+PATH_TO_TRAIN_DATA_DIR = "path/to/training_dataset"
+PATH_TO_VALIDATION_DATA_DIR = "path/to/validation_dataset"
+PATH_TO_TEST_DATA_DIR = "path/to/test_dataset"
 
 MODEL_PARAMETERS = {
     "input_channels": 3,

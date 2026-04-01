@@ -8,10 +8,8 @@ class DeepEnsemble:
         models (list[torch.nn.Module]): A list of PyTorch models to be included in the ensemble.
     """
     def __init__(self, models: list[torch.nn.Module]):
-        if torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        else:
-            self.device = torch.device("cpu")
+        super(DeepEnsemble, self).__init__()
+        self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
         if len(models) < 2:
             raise ValueError("Ensemble requires at least two models.")

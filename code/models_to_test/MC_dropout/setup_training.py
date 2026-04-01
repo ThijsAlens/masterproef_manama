@@ -6,6 +6,9 @@ from torchvision import datasets, transforms
 import random
 import numpy as np
 
+import config
+from dataset.custom_dataset import CustomDataset
+
 def set_seed(seed: int = 1) -> None:
     """
     Set the random seed for reproducibility.
@@ -23,50 +26,6 @@ def set_seed(seed: int = 1) -> None:
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     return
-
-def get_data_loader(data_path: str, input_dimension: tuple=(3, 64, 64), augment: bool=False, batch_size: int=32):
-    """
-    Creates a data loader for the specified dataset.
-
-    Args:
-        data_path (str): Path to the dataset.
-        input_dimension (tuple): Desired input size for the model (default: (3, 64, 64)).
-        augment (bool): Whether to apply data augmentation (default: False).
-        batch_size (int): Number of samples per batch (default: 32).
-
-    Returns:
-        DataLoader: A data loader for the specified dataset.
-    """
-    # Standard normalization values for ImageNet
-    norm_mean = [0.485, 0.456, 0.406]
-    norm_std = [0.229, 0.224, 0.225]
-
-    if augment:
-        data_transform = transforms.Compose([
-            transforms.Resize(input_dimension),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(norm_mean, norm_std)
-        ])
-    else:
-        data_transform = transforms.Compose([
-            transforms.Resize(input_dimension),
-            transforms.ToTensor(),
-            transforms.Normalize(norm_mean, norm_std)
-        ])
-
-    # Load datasets
-    dataset = datasets.ImageFolder(root=data_path, transform=data_transform)
-
-    loader = DataLoader(
-        dataset, 
-        batch_size=batch_size, 
-        shuffle=True, 
-        num_workers=4
-    )
-
-    print(f"Classes found: {dataset.classes}")
-    return loader
 
 def training_step(model: torch.nn.Module, images: torch.Tensor, targets: torch.Tensor, loss_fn: torch.nn.Module, optimizer: torch.optim.Optimizer, writer: torch.utils.tensorboard.SummaryWriter, epoch: int) -> float:
     """
@@ -168,3 +127,12 @@ def test_mc_dropout(model: torch.nn.Module, test_loader: DataLoader, writer: tor
             writer.add_scalar("Predictions/Mean", pred_mean.item(), epoch)
             writer.add_scalar("Predictions/Variance", pred_var.item(), epoch)
     return
+
+if __name__ == "__main__":
+    set_seed(config.SEED)
+
+    train_loader = DataLoader(CustomDataset(source_dir=config.PATH_TO_TRAIN_DATA_DIR, include_depth=True, world=True), batch_size=config.BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True)
+    val_loader = DataLoader(CustomDataset(source_dir=config.PATH_TO_VALIDATION_DATA_DIR, include_depth=True, world=True), batch_size=config.BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True)
+    test_loader = DataLoader(CustomDataset(source_dir=config.PATH_TO_TEST_DATA_DIR, include_depth=True, world=True), batch_size=config.BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True)
+
+    

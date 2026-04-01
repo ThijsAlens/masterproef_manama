@@ -1,15 +1,16 @@
 import torch
 from torch.utils.data import DataLoader, Subset
 from torchvision import transforms, datasets
+from torch.utils.tensorboard import SummaryWriter
 
 import random
 import numpy as np
 from datetime import datetime
-from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from ensemble import DeepEnsemble, SimpleCNNRegressionModel
 import config
+from dataset.custom_dataset import CustomDataset 
 
 def set_seed(seed: int = 1) -> None:
     """
@@ -28,50 +29,6 @@ def set_seed(seed: int = 1) -> None:
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     return
-
-def get_data_loader(data_path: str, input_dimension: tuple=(3, 64, 64), augment: bool=False, batch_size: int=32):
-    """
-    Creates a data loader for the specified dataset.
-
-    Args:
-        data_path (str): Path to the dataset.
-        input_dimension (tuple): Desired input size for the model (default: (3, 64, 64)).
-        augment (bool): Whether to apply data augmentation (default: False).
-        batch_size (int): Number of samples per batch (default: 32).
-
-    Returns:
-        DataLoader: A data loader for the specified dataset.
-    """
-    # Standard normalization values for ImageNet
-    norm_mean = [0.485, 0.456, 0.406]
-    norm_std = [0.229, 0.224, 0.225]
-
-    if augment:
-        data_transform = transforms.Compose([
-            transforms.Resize(input_dimension),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(norm_mean, norm_std)
-        ])
-    else:
-        data_transform = transforms.Compose([
-            transforms.Resize(input_dimension),
-            transforms.ToTensor(),
-            transforms.Normalize(norm_mean, norm_std)
-        ])
-
-    # Load datasets
-    dataset = datasets.ImageFolder(root=data_path, transform=data_transform)
-
-    loader = DataLoader(
-        dataset, 
-        batch_size=batch_size, 
-        shuffle=True, 
-        num_workers=4
-    )
-
-    print(f"Classes found: {dataset.classes}")
-    return loader
 
 def training_step(model: torch.nn.Module, images: torch.Tensor, targets: torch.Tensor, loss_fn: torch.nn.Module, optimizer: torch.optim.Optimizer, writer: torch.utils.tensorboard.SummaryWriter, epoch: int) -> float:
     """
@@ -220,9 +177,9 @@ def test_ensemble(ensemble: DeepEnsemble, test_dataset: DataLoader, loss_fn=torc
 if __name__ == "__main__":
     set_seed(config.SEED)
 
-    train_loader = get_data_loader(data_path=config.PATH_TO_TRAIN_DATA, input_dimension=config.INPUT_DIMENSION, augment=True, batch_size=config.BATCH_SIZE)
-    val_loader = get_data_loader(data_path=config.PATH_TO_VALIDATION_DATA, input_dimension=config.INPUT_DIMENSION, augment=False, batch_size=config.BATCH_SIZE)
-    test_loader = get_data_loader(data_path=config.PATH_TO_TEST_DATA, input_dimension=config.INPUT_DIMENSION, augment=False, batch_size=config.BATCH_SIZE)
+    train_loader = DataLoader(CustomDataset(source_dir=config.PATH_TO_TRAIN_DATA_DIR, include_depth=True, world=True), batch_size=config.BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True)
+    val_loader = DataLoader(CustomDataset(source_dir=config.PATH_TO_VALIDATION_DATA_DIR, include_depth=True, world=True), batch_size=config.BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True)
+    test_loader = DataLoader(CustomDataset(source_dir=config.PATH_TO_TEST_DATA_DIR, include_depth=True, world=True), batch_size=config.BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True)
 
     deep_ensemble = train_ensemble_bagging(num_models=config.NUM_MODELS, training_dataset=train_loader, validation_dataset=val_loader, model_parameters=config.MODEL_PARAMETERS, epochs=config.EPOCHS, lr=config.LR, batch_size=config.BATCH_SIZE, sample_ratio=config.BAGGING_SAMPLE_RATIO)
 
