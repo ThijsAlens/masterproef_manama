@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 
 import pyrealsense2 as rs
@@ -75,7 +76,6 @@ class RealSenseCamera:
             if key == ord('r'): # Press 'R' to reprocess the image if contours are not satisfactory
                 cv2.destroyWindow("Contours")
                 return self._create_pixel_to_real_world_map(mode=mode)
-        cv2.destroyWindow("Contours")
 
 
         centroids = []
@@ -83,13 +83,31 @@ class RealSenseCamera:
             x, y, w, h = cv2.boundingRect(contour)
             aspect_ratio = w / h if h != 0 else 0
             if 1 < max(w, h) < 100 and min(w, h) < 20:  # Filter contours based on size to find line segments
+                if any(np.hypot((x + w // 2) - ex, (y + h // 2) - ey) < 10 and w>h == horizontal for ex, ey, horizontal in centroids):
+                    continue  # Skip if this contour is close to an already detected centroid
                 centroids.append((x + w // 2, y + h // 2, w>h))
-            elif 0.8 < aspect_ratio < 1.2 and w > 15 and h > 15: # Filter the reference square
+            elif 0.2 < aspect_ratio < 2 and w > 10 and h > 5: # Filter the reference square
                 real_world_reference_p = (x, y) # Real world reference point in pixel coordinates
         
         # calculate the center of all the centroids to know where each centroid is located in the image (N, E, S, W)
         center_x = np.mean([c[0] for c in centroids])
         center_y = np.mean([c[1] for c in centroids])
+
+        # show the centroids and the center point for visualization
+        for c in centroids:
+            cv2.circle(img, (c[0], c[1]), 2, (255, 0, 0), -1)
+        cv2.circle(img, (int(center_x), int(center_y)), 2, (0, 0, 255), -1)
+        cv2.circle(img, real_world_reference_p, 5, (0, 255, 255), -1) # Reference point in yellow
+        print(f"Reference point: {real_world_reference_p}")
+        cv2.imshow("Centroids and Center", img)
+        while True:            
+            key = cv2.waitKey(1) & 0xFF
+            if key == 13: # Enter to continue after visualizing centroids and center
+                cv2.destroyWindow("Centroids and Center")
+                break
+            if key == ord('r'): # Press 'R' to reprocess the image if centroids are not satisfactory
+                cv2.destroyWindow("Centroids and Center")
+                return self._create_pixel_to_real_world_map(mode=mode)
 
         NESW_info = {"N": [], "E": [], "S": [], "W": []}
         for centroid in centroids:
@@ -110,13 +128,20 @@ class RealSenseCamera:
 
         # Store the x and y values
         if len(NESW_info["N"]) != len(NESW_info["S"]) or len(NESW_info["E"]) != len(NESW_info["W"]):
-            raise ValueError("Unequal number of centroids detected in opposite directions while creating pixel to real world map. Ensure the lines are fully visible and well-detected.")
-        
+            # raise ValueError("Unequal number of centroids detected in opposite directions while creating pixel to real world map. Ensure the lines are fully visible and well-detected.")
+            pass
+
         self.pixel_to_real_world_conversion_info = {"x": [], "y": [], "reference_pixel": real_world_reference_p}
         for N_point, S_point in zip(NESW_info["N"], NESW_info["S"]):
             self.pixel_to_real_world_conversion_info["x"].append(np.mean([N_point[0], S_point[0]]))
         for E_point, W_point in zip(NESW_info["E"], NESW_info["W"]):
             self.pixel_to_real_world_conversion_info["y"].append(np.mean([E_point[1], W_point[1]]))
+
+        # write to json file
+        if mode == "live":
+            os.makedirs(os.path.dirname(cam_config.CALIBRATION_REAL_WORLD_PATH), exist_ok=True)
+            with open(cam_config.CALIBRATION_REAL_WORLD_PATH, "w") as f:
+                json.dump(self.pixel_to_real_world_conversion_info, f, indent=4)
         
         return
 
@@ -225,19 +250,19 @@ class RealSenseCamera:
 
         # --- Set up the pixel to real world coordinate mapping for the current calibration ---
         if mode == "live":
-            print("Change to the lines to calibrate the pixel to real world mapping and press Enter to continue...")
-            cv2.waitKey(0)
-        # self.pixel_to_real_world_map = self._create_pixel_to_real_world_map(mode=mode)
+            input("Change to the lines to calibrate the pixel to real world mapping and press Enter to continue...")
+        self.pixel_to_real_world_map = self._create_pixel_to_real_world_map(mode=mode)
         return
 
-    def get_frame(self, stream=rs.stream.color, straighten=True) -> np.ndarray | None:
+    def get_frame(self, stream=rs.stream.color, straighten=True, crop: bool = False) -> np.ndarray | None:
         """
         Captures and returns the latest frame for a specified stream.
         
         Args:
             stream: The RealSense stream type (rs.stream.color or rs.stream.depth).
             straighten: Whether to straighten the image using undistortion maps. (default: True)
-        
+            crop: If set to True, the frame will exclude the measuring lines (default: False)
+
         Returns:
             np.ndarray | None: The captured frame as a numpy array, or None if no frame is available.
         """
@@ -252,6 +277,12 @@ class RealSenseCamera:
             img = np.asanyarray(color_frame.get_data())
             if straighten:
                 img, _ = self.straighten_frame(img, None)
+            
+            # Default cropping
+            img = img[cam_config.DEFAULT_CROP_Y[0]:cam_config.DEFAULT_CROP_Y[1], cam_config.DEFAULT_CROP_X[0]:cam_config.DEFAULT_CROP_X[1]]
+            
+            if crop: # Crop the image to exclude the measuring lines based
+                img = img[cam_config.EXCLUDE_MEASURING_Y[0]:cam_config.EXCLUDE_MEASURING_Y[1], cam_config.EXCLUDE_MEASURING_X[0]:cam_config.EXCLUDE_MEASURING_X[1]]
             return img
         
         if stream == rs.stream.depth:
