@@ -1,5 +1,7 @@
 import torch
 
+from models_to_test.ensemble import config
+
 class DeepEnsemble:
     """
     A simple implementation of a deep ensemble model for regression.
@@ -29,17 +31,30 @@ class DeepEnsemble:
         """
         X = X.to(self.device)
         with torch.no_grad():
-            predictions = []
+            means = []
+            vars_ = []
+            
             for model in self.models:
-                pred = model(X)
-                predictions.append(pred)
-            stacked = torch.stack(predictions)
-            return stacked.mean(dim=0), stacked.var(dim=0)
+                mean, variance = model(X)
+                means.append(mean)
+                vars_.append(variance)
+                
+            means = torch.stack(means)
+            vars_ = torch.stack(vars_)
+
+            # Ensemble Mean calculation
+            ensemble_mean = means.mean(dim=0)
+            
+            # Ensemble Variance calculation (total uncertainty = aleatoric + epistemic)
+            ensemble_var = (vars_ + means**2).mean(dim=0) - ensemble_mean**2
+
+            return ensemble_mean, ensemble_var
 
 
 class SimpleCNNRegressionModel(torch.nn.Module):
     """
-    A simple convolutional network for regression tasks.
+    A simple convolutional network for regression tasks with the capability to model aleatoric uncertainty.
+    It outputs both the mean and variance for each prediction.
     
     Args:
         input_size (int): The number of input features.
@@ -60,15 +75,23 @@ class SimpleCNNRegressionModel(torch.nn.Module):
             current_channels = h_channels
         self.conv_layers = torch.nn.Sequential(*self.conv_layers)
 
-        # Global Average Pooling to transition from CNN to fully connected layer
-        self.global_pool = torch.nn.AdaptiveAvgPool2d((1, 1))
+        # Flatten the output of the convolutional layers to feed into the fully connected layer
+        dummy_input = torch.zeros(1, input_channels, config.INPUT_DIMENSION[1], config.INPUT_DIMENSION[2])
+        dummy_output = self.conv_layers(dummy_input)
+        flattened_size = dummy_output.view(1, -1).size(1)
         
         # Fully Connected Layer for regression output
-        self.fc = torch.nn.Linear(hidden_channels[-1], output_size)
+        self.fc = torch.nn.Linear(flattened_size, output_size * 2)  # Output mean and variance for each output feature (aleatoric uncertainty)
 
     def forward(self, x):
         x = self.conv_layers(x)
-        x = self.global_pool(x)
         x = torch.flatten(x, 1)
         x = self.fc(x)
-        return x
+
+        # Split the output into mean and variance components
+        mean = x[:, :self.fc.out_features // 2]
+        variance = x[:, self.fc.out_features // 2:]
+
+        # Ensure variance is positive and add small value for numerical stability
+        variance = torch.nn.functional.softplus(variance) + 1e-6
+        return mean, variance

@@ -35,114 +35,7 @@ class RealSenseCamera:
         self.pipeline = rs.pipeline()   # Create a RealSense pipeline, this is used to configure, start and stop the camera
         self.config = rs.config()       # Create a config object to configure the pipeline
         self.config.enable_stream(rs.stream.depth, self.width, self.height, rs.format.z16, self.fps)   # Enable depth stream
-        self.config.enable_stream(rs.stream.color, self.width, self.height, rs.format.bgr8, self.fps)  # Enable color stream
-        return
-    
-    def _create_pixel_to_real_world_map(self, mode: str = "live") -> None:
-        """
-        Sets the pixel_to_real_world_conversion_info attribute by detecting the centroids of the lines in the calibration image and categorizing them into N, E, S, W based on their position relative to the center of the image. The reference point in pixel coordinates is also stored for later use in conversion.
-
-        Args:
-            mode (str): "live" to use a live frame for calibration, "image" to use a pre-captured image for calibration. (default: "live")
-
-        Returns:
-            None
-        """
-        match mode:
-            case "live":
-                img = self.get_frame(stream=rs.stream.color)
-                if img is None:
-                    raise ValueError("Could not capture a color frame for creating pixel to real world map.")
-            case "image":
-                img = cv2.imread(cam_config.CALIBRATION_REAL_WORLD_PATH)
-                if img is None:
-                    raise ValueError(f"Could not load image from {cam_config.CALIBRATION_REAL_WORLD_PATH} for creating pixel to real world map.")
-            case _:
-                raise ValueError("Invalid mode. Choose 'live' or 'image'.")
-        
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        equalized = clahe.apply(gray)
-        blur_gray = cv2.GaussianBlur(equalized,(3, 3),0)
-        edges = cv2.Canny(blur_gray, cam_config.CANNY_LOW_THRESHOLD, cam_config.CANNY_HIGH_THRESHOLD)
-        contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-        cv2.drawContours(img, contours, -1, (0, 255, 0), 2)  # Draw contours for visualization
-        cv2.imshow("Contours", img)
-        while True:
-            key = cv2.waitKey(1) & 0xFF
-            if key == 13: # Enter to continue after visualizing contours
-                cv2.destroyWindow("Contours")
-                break
-            if key == ord('r'): # Press 'R' to reprocess the image if contours are not satisfactory
-                cv2.destroyWindow("Contours")
-                return self._create_pixel_to_real_world_map(mode=mode)
-
-
-        centroids = []
-        for contour in contours:
-            x, y, w, h = cv2.boundingRect(contour)
-            aspect_ratio = w / h if h != 0 else 0
-            if 1 < max(w, h) < 100 and min(w, h) < 20:  # Filter contours based on size to find line segments
-                if any(np.hypot((x + w // 2) - ex, (y + h // 2) - ey) < 10 and w>h == horizontal for ex, ey, horizontal in centroids):
-                    continue  # Skip if this contour is close to an already detected centroid
-                centroids.append((x + w // 2, y + h // 2, w>h))
-            elif 0.2 < aspect_ratio < 2 and w > 10 and h > 5: # Filter the reference square
-                real_world_reference_p = (x, y) # Real world reference point in pixel coordinates
-        
-        # calculate the center of all the centroids to know where each centroid is located in the image (N, E, S, W)
-        center_x = np.mean([c[0] for c in centroids])
-        center_y = np.mean([c[1] for c in centroids])
-
-        # show the centroids and the center point for visualization
-        for c in centroids:
-            cv2.circle(img, (c[0], c[1]), 2, (255, 0, 0), -1)
-        cv2.circle(img, (int(center_x), int(center_y)), 2, (0, 0, 255), -1)
-        cv2.circle(img, real_world_reference_p, 5, (0, 255, 255), -1) # Reference point in yellow
-        print(f"Reference point: {real_world_reference_p}")
-        cv2.imshow("Centroids and Center", img)
-        while True:            
-            key = cv2.waitKey(1) & 0xFF
-            if key == 13: # Enter to continue after visualizing centroids and center
-                cv2.destroyWindow("Centroids and Center")
-                break
-            if key == ord('r'): # Press 'R' to reprocess the image if centroids are not satisfactory
-                cv2.destroyWindow("Centroids and Center")
-                return self._create_pixel_to_real_world_map(mode=mode)
-
-        NESW_info = {"N": [], "E": [], "S": [], "W": []}
-        for centroid in centroids:
-            if centroid[2]:  # Vertical line segment
-                if centroid[1] < center_y:
-                    NESW_info["N"].append(centroid)
-                else:
-                    NESW_info["S"].append(centroid)
-            else:  # Horizontal line segment
-                if centroid[0] < center_x:
-                    NESW_info["W"].append(centroid)
-                else:
-                    NESW_info["E"].append(centroid)
-        
-        # Sort the centroids
-        for direction in NESW_info:
-            NESW_info[direction].sort(key=lambda c: c[1] if direction in ["N", "S"] else c[0])
-
-        # Store the x and y values
-        if len(NESW_info["N"]) != len(NESW_info["S"]) or len(NESW_info["E"]) != len(NESW_info["W"]):
-            # raise ValueError("Unequal number of centroids detected in opposite directions while creating pixel to real world map. Ensure the lines are fully visible and well-detected.")
-            pass
-
-        self.pixel_to_real_world_conversion_info = {"x": [], "y": [], "reference_pixel": real_world_reference_p}
-        for N_point, S_point in zip(NESW_info["N"], NESW_info["S"]):
-            self.pixel_to_real_world_conversion_info["x"].append(np.mean([N_point[0], S_point[0]]))
-        for E_point, W_point in zip(NESW_info["E"], NESW_info["W"]):
-            self.pixel_to_real_world_conversion_info["y"].append(np.mean([E_point[1], W_point[1]]))
-
-        # write to json file
-        if mode == "live":
-            os.makedirs(os.path.dirname(cam_config.CALIBRATION_REAL_WORLD_PATH), exist_ok=True)
-            with open(cam_config.CALIBRATION_REAL_WORLD_PATH, "w") as f:
-                json.dump(self.pixel_to_real_world_conversion_info, f, indent=4)
-        
+        self.config.enable_stream(rs.stream.color, self.width, self.height, rs.format.bgr8, self.fps)  # Enable color stream        
         return
 
     def start_stream(self):
@@ -177,7 +70,7 @@ class RealSenseCamera:
             - calculated from a checkerboard image (setup_live=False, specify file path) (mode="image")
 
         Args:
-            mode (str): "live", "load", or "image" to specify how to set up R and T. (default: "live")
+            mode (str): "live", "load", "image", or "setup" to specify how to set up R and T. (default: "live")
             file_path_T (str): File path to load the T vector from (required if mode="load").
             file_path_R (str): File path to load the R matrix from (required if mode="load").      
         Returns:
@@ -186,8 +79,8 @@ class RealSenseCamera:
 
         if self.rs_intrinsics is None:
             raise ValueError("RealSense intrinsics not set. Call start_stream() first.")
-        if mode != "live" and mode != "load" and mode != "image":
-            raise ValueError("Invalid mode. Choose 'live', 'load', or 'image'.")
+        if mode != "live" and mode != "load" and mode != "image" and mode != "setup":
+            raise ValueError("Invalid mode. Choose 'live', 'load', 'image', or 'setup'.")
         
         # --- Intrinsic Matrices Setup ---
         
@@ -217,7 +110,7 @@ class RealSenseCamera:
                     raise ValueError(f"Could not load image from {cam_config.CALIBRATION_IMAGE_PATH}.")
                 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
-            case "live":
+            case "live" | "setup":
                 # Get a live color frame for calibration
                 img = self.get_frame(stream=rs.stream.color)
                 if img is None:
@@ -251,7 +144,13 @@ class RealSenseCamera:
         # --- Set up the pixel to real world coordinate mapping for the current calibration ---
         if mode == "live":
             input("Change to the lines to calibrate the pixel to real world mapping and press Enter to continue...")
-        self.pixel_to_real_world_map = self._create_pixel_to_real_world_map(mode=mode)
+        
+        # Load the pixel to real world conversion info from the specified file path
+        if mode == "setup":
+            # This mode is used to set up the pixel to real world conversion info based on the lines image, no further action should be taken with this instance of the camera.
+            return
+        with open(cam_config.CALIBRATION_MAPPING_FILEPATH, 'r') as f:
+            self.pixel_to_real_world_conversion_info = json.load(f)
         return
 
     def get_frame(self, stream=rs.stream.color, straighten=True, crop: bool = False) -> np.ndarray | None:
@@ -293,6 +192,11 @@ class RealSenseCamera:
             img = np.asanyarray(depth_frame.get_data())
             if straighten:
                 _, img = self.straighten_frame(None, img)
+            
+            # Default cropping
+            img = img[cam_config.DEFAULT_CROP_Y[0]:cam_config.DEFAULT_CROP_Y[1], cam_config.DEFAULT_CROP_X[0]:cam_config.DEFAULT_CROP_X[1]]
+            if crop: # Crop the image to exclude the measuring lines based
+                img = img[cam_config.EXCLUDE_MEASURING_Y[0]:cam_config.EXCLUDE_MEASURING_Y[1], cam_config.EXCLUDE_MEASURING_X[0]:cam_config.EXCLUDE_MEASURING_X[1]]
             return img
         
     def save_frame(self, color_image: np.ndarray, depth_image: np.ndarray, file_path: str = None) -> str:
@@ -356,41 +260,79 @@ class RealSenseCamera:
     
     def convert_pixel_to_real_world(self, pixel_coords: tuple[int, int]) -> tuple[float, float]:
         """
-        Converts pixel coordinates to real world coordinates using the current calibration and the pixel_to_real_world_conversion_info.
-
-        Args:
-            pixel_coords (tuple[int, int]): The pixel coordinates (x, y) to be converted.
-
-        Returns:
-            tuple[float, float]: The corresponding real world coordinates (x, y).
+        Converts pixel coordinates to real-world coordinates using a grid-search 
+        and linear interpolation algorithm.
         """
-
-        def interpolate_axis(pixel_val: int, grid: list[int], reference_p: int) -> float:
-            """
-            Helper function to interpolate the real world coordinate along one axis based on the pixel value, the grid of pixel values for that axis, and the reference pixel value.
+        if getattr(self, 'pixel_to_real_world_conversion_info', None) is None:
+            raise ValueError("Calibration info not set. Call load_calibration_map() first.")
             
-            Args:                
-                pixel_val (int): The pixel coordinate value along the axis to be converted.
-                grid (list[int]): The list of pixel values along the axis corresponding to the real world grid lines.
-                reference_p (int): The reference pixel value for interpolation."""
-            # ignore lines before the reference point
-            grid = [g for g in grid if g >= reference_p]
-            for i in range(len(grid) - 1):
-                if grid[i] <= pixel_val <= grid[i+1]:
-                    gap_pixels = grid[i+1] - grid[i]
-                    fraction = (pixel_val - grid[i]) / gap_pixels if gap_pixels != 0 else 0.0
-                    return (i + fraction) * cam_config.DISTANCE_BETWEEN_LINES_MM
-            raise ValueError(f"Pixel value {pixel_val} is out of bounds of the grid.")
+        info = self.pixel_to_real_world_conversion_info
+        grid = info["grid_2d"]
+        ref_px = info["reference_pixel"]
         
-        if self.pixel_to_real_world_conversion_info is None:
-            raise ValueError("Pixel to real world conversion info not set. Call setup_matrices() first.")
-        
-        target_x_p, target_y_p = pixel_coords
-        reference_x_p, reference_y_p = self.pixel_to_real_world_conversion_info["reference_pixel"]
-        x_grid_p = self.pixel_to_real_world_conversion_info["x"]
-        y_grid_p = self.pixel_to_real_world_conversion_info["y"]
+        target_px = pixel_coords
+        gap_mm = float(cam_config.DISTANCE_BETWEEN_LINES_MM)
 
-        target_x_w = interpolate_axis(target_x_p, x_grid_p, reference_x_p)
-        target_y_w = interpolate_axis(target_y_p, y_grid_p, reference_y_p)
+        def get_linear_mm(px, py):
+            """Executes the grid-search and linear interpolation for a single pixel."""
+            rows = len(grid)
+            cols = len(grid[0])
+            
+            # --- 1. Find the Row (Y) ---
+            target_row = 0
+            for r in range(rows):
+                # Search for the lowest y-value in this row
+                min_y = min(pt[1] for pt in grid[r])
+                
+                # If the row's lowest Y exceeded our target Y, we stepped too far down!
+                if min_y > py:
+                    target_row = max(0, r - 1)  # The target is in the previous row
+                    break
+                target_row = r  # Keep updating in case it's in the very last row
+            
+            # Cap it so we don't crash if clicked below the grid
+            target_row = min(target_row, rows - 2)
+            
+            # --- 2. Find the Column (X) ---
+            target_col = 0
+            for c in range(cols):
+                # Find the lowest X in this column (checking top and bottom corners of the row we found)
+                min_x = min(grid[target_row][c][0], grid[target_row+1][c][0])
+                
+                if min_x > px:
+                    target_col = max(0, c - 1) # Target is in the previous column
+                    break
+                target_col = c
+                
+            # Cap it so we don't crash if clicked to the right of the grid
+            target_col = min(target_col, cols - 2)
+            
+            # --- 3. Linear Interpolation ---
+            tl = grid[target_row][target_col]       # Top-Left corner of cell
+            tr = grid[target_row][target_col + 1]   # Top-Right corner of cell
+            bl = grid[target_row + 1][target_col]   # Bottom-Left corner of cell
+            
+            # Calculate the width and height of this specific cell in pixels
+            cell_width_px = tr[0] - tl[0]
+            cell_height_px = bl[1] - tl[1]
+            
+            # Calculate the percentage (0.0 to 1.0) of how far the pixel is inside the cell
+            pct_x = (px - tl[0]) / cell_width_px if cell_width_px != 0 else 0.0
+            pct_y = (py - tl[1]) / cell_height_px if cell_height_px != 0 else 0.0
+            
+            # --- 4. Final Math ---
+            # Rough grid position + interpolated sub-cell position
+            real_x = (target_col + pct_x) * gap_mm
+            real_y = (target_row + pct_y) * gap_mm
+            
+            return real_x, real_y
 
-        return target_x_w, target_y_w
+        # Map the Target and the Reference through the algorithm
+        abs_target_x, abs_target_y = get_linear_mm(target_px[0], target_px[1])
+        abs_ref_x, abs_ref_y = get_linear_mm(ref_px[0], ref_px[1])
+
+        # Subtract Reference to lock the square at (0, 0)
+        final_x = abs_target_x - abs_ref_x
+        final_y = abs_target_y - abs_ref_y
+
+        return float(final_x), float(final_y)

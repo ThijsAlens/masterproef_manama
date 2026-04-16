@@ -32,20 +32,15 @@ def auto_detect_disk_center(image) -> tuple[int, int]:
     for cnt in contours:
         area = cv2.contourArea(cnt)
         
-        # 1. Filter out noise
         if area < 100:  
             continue
             
-        # 2. Filter by Aspect Ratio
         x, y, w, h = cv2.boundingRect(cnt)
         aspect_ratio = float(w) / h if h != 0 else 0
         
         if 0.7 < aspect_ratio < 1.3:
-            # If multiple circle-like things are found, grab the biggest one
             if area > max_area:
                 max_area = area
-                
-                # cv2.moments calculates the true center of mass of the shape
                 M = cv2.moments(cnt)
                 if M["m00"] != 0:
                     cx = int(M["m10"] / M["m00"])
@@ -65,16 +60,24 @@ def main():
     # Initialize the camera
     camera = RealSenseCamera()
     camera.start_stream()
-    camera.setup_matrices(mode="live")
+    camera.setup_matrices(mode="live") # Assuming this now loads your JSON map!
 
     while True:
-        # Capture and show frames
+        # Capture frames
         color_image = camera.get_frame(stream=rs.stream.color)
         depth_image = camera.get_frame(stream=rs.stream.depth)
-        depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
         
-        cv2.imshow("Color Image", color_image)
-        cv2.imshow("Depth Image", depth_colormap)
+        if color_image is not None and depth_image is not None:
+            # --- 1. Draw Crop Box on Live Feed ---
+            live_display = color_image.copy()
+            cv2.rectangle(live_display, 
+                          (100, 40), 
+                          (470, 290), 
+                          (0, 0, 255), 2)
+            depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
+            
+            cv2.imshow("Color Image", live_display)
+            cv2.imshow("Depth Image", depth_colormap)
 
         # Wait for user input
         key = cv2.waitKey(1) & 0xFF
@@ -84,8 +87,7 @@ def main():
             if color_image is not None:
                 temp_image = color_image.copy()
                 
-                # --- AUTO DETECT TRIGGER ---
-                # Attempt to find the center automatically before opening the window
+                # Attempt to find the center automatically
                 current_center = auto_detect_disk_center(temp_image)
                 
                 cv2.namedWindow("Annotate")
@@ -104,6 +106,14 @@ def main():
                 while True:
                     # Create a clean copy to indicate the centers on
                     display_img = temp_image.copy()
+                    
+                    # --- 2. Draw Crop Box on Annotation Window ---
+                    cv2.rectangle(display_img, 
+                                  (100, 40), 
+                                  (470, 290), 
+                                  (0, 0, 255), 2)
+                    
+                    # Draw the cross marker for the disk center
                     if current_center:
                         cv2.drawMarker(display_img, current_center, (0, 255, 0), 
                                        markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
@@ -118,25 +128,29 @@ def main():
                             print("No center marked! Please click to mark the center before saving.")
                             continue
                             
-                        # 1. Save Image
+                        # Save Image
                         img_filename = f"{config.IMAGE_ID_START:07}.png"
                         json_filename = f"{config.IMAGE_ID_START:07}.json"
                         config.IMAGE_ID_START += 1
                         
                         img_path = os.path.join(config.ROOT_DIRECTORY, img_filename)
                         json_path = os.path.join(config.ROOT_DIRECTORY, json_filename)
+
+                        save_color_image = camera.get_frame(stream=rs.stream.color, straighten=True, crop=True)
+                        save_depth_image = camera.get_frame(stream=rs.stream.depth, straighten=True, crop=True)
                         
-                        camera.save_frame(color_image, depth_image, file_path=img_path)
+                        camera.save_frame(save_color_image, save_depth_image, file_path=img_path)
                         
-                        # 2. Calculate real-world coordinates
+                        # Calculate real-world coordinates BEFORE shifting the pixel coordinates
                         x_w, y_w = camera.convert_pixel_to_real_world(current_center)
 
-                        # 3. Save Center coordinates (JSON)
+                        # Save Center coordinates (JSON)
+                        # We subtract the bounds here because the saved image will be cropped!
                         with open(json_path, "w") as f:
                             json.dump({
                                 "pixel": {
-                                    "x": current_center[0],
-                                    "y": current_center[1]
+                                    "x": current_center[0] - 100,
+                                    "y": current_center[1] - 40
                                 },
                                 "world": {
                                     "x": x_w,
@@ -158,6 +172,7 @@ def main():
                         if current_center:
                             current_center = None
                             print("Removed last center.")
+                            
             print("Controls:\n\t[C] to capture a frame.\n\t[ESC] to quit.")
 
         if key == 27:  # Press 'Esc' to exit

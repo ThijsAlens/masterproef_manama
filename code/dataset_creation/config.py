@@ -5,7 +5,7 @@ CLASSES = \
         "ball": 1,
     }
 
-IMAGE_ID_START = 389 # Change this if you already have images in the dataset folder to avoid overwriting
+IMAGE_ID_START = 0 # Change this if you already have images in the dataset folder to avoid overwriting
 
 NUMBER_OF_INNER_CORNERS_X = 9 # Number of inner corners in the chessboard pattern along the x-axis (width)
 NUMBER_OF_INNER_CORNERS_Y = 6 # Number of inner corners in the chessboard pattern along the y-axis (height)

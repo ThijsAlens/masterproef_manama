@@ -21,18 +21,18 @@ Realsense camera's are a type of camera which capture both RGB and depth informa
 The realsense camera's have good support in the form of RealSense SDK~\cite{src:RealSense-SDK}.
 It is a library which supports different languages like Python, C\#, ROS, etc. and makes it easy to use the Realsense camera's.
 We will use its Python binding, which is called ``pyrealsense2''.
-It allows us to easily setup both and handle the RGB and depth camera streams independently from each other.
+It allows us to easily setup and handle both the RGB and depth camera streams independently from each other.
 It also contains information about the intrinsic parameters of the camera, these embody the focal length and the principal point of the camera.
-Its importance will become clear in \cref{ch:dataset_section:setup_subsection:translation-from-pixel-to-world-coordinates}.
+Its importance will become clear in \cref{ch:dataset_section:setup_subsection:real-world-coordinates}.
 
 \subsection{Table and robot arm}\label{ch:dataset_section:setup_subsection:table-and-robot-arm}
 \paragraph{Table}
 The table is used as support for the the camera, robot arm and objects.
-As can be seen in \cref{fig:setup}, the table is equipped with a grid of black lines in the shape of a rectangle and a black square.
+As \cref{fig:setup} shows, the table is equipped with a grid of black lines in the shape of a rectangle and a black square.
 Each line is 2cm apart from each other and is used as a reference so we can capture the real-world coordinates of the objects.
 The black square is used as the origin of this maden coordinate system, more specifically the bottom right corner of the square is the origin.
 The x-axis goes horizontally (relative to the camera's \gls{pov}) to the right, the y-axis goes vertically downwards.
-There is no z-axis defined as all the objects are the same height; consequently, the robot arm only needs to know the x and y coordinates of the objects to be able to grasp them.
+There is no z-axis defined as all the objects are roughly the same height; consequently, the robot arm only needs to know the x and y coordinates of the objects to be able to grasp them.
 More information about the specific use of the grid will be given in \cref{ch:dataset_section:setup_subsection:labeling}.
 
 \paragraph{Robot arm}
@@ -41,17 +41,25 @@ It is equipped with a vacuum gripper, which is used to grasp the objects on the 
 The robot arm is controlled by a computer, which sends commands to the robot arm to move to specific coordinates and to open and close the gripper.
 Previous work with this specific robot arm~\cite{src:robot-demonstrator} will be used to control it.
 
-\section{Labeling}\label{ch:dataset_section:setup_subsection:labeling}
-We needed to create a dataset for regression of the x and y coordinates of the objects on the table.
-There where two approaches we could take to do this, either we could use the pixel coordinates of the object to localize it or we could use the real-world coordinates.
-There are some advantages and problems with both approaches.
+\section{Labeling}\label{ch:dataset_section:labeling}
+We needed to create a dataset for regression of the position of the objects on the table.
+There where three approaches we could take to do this:
+\begin{itemize}
+    \item We could use the pixel coordinates. 
+    \item We could use the real-world coordinates.
+    \item We could use the robot's position.
+\end{itemize}
+There are some advantages and problems with all three approaches.
 
-\subsection{Pixel coordinates}\label{ch:dataset_section:setup_subsection:pixel-coordinates}
+\subsection{Pixel coordinates}\label{ch:dataset_section:labeling_subsection:pixel-coordinates}
 Pixel coordinates are coordinates in the image plane of the camera, they are defined by the number of pixels in the x and y direction.
 A computer sees an image as a 2D array of pixels per colour channel, so for RGB images, there are 3 2D arrays in total, one for each colour channel.
-Conventionally, the origin of the pixel coordinates is the first value in the array $img_r[0][0]$, the x-axis goes horizontally to the right and the y-axis goes vertically downwards.
-The libraries most commonly used for computer vision, like OpenCV~\cite{src:opencv} and PyTorch~\cite{src:pytorch}, use pixel coordinates for their operations on images, which makes it very convenient to use and incooperate.
+Conventionally, the origin of the pixel coordinates is the first value in the array ($img_r[0][0]$), the x-axis goes horizontally to the right and the y-axis goes vertically downwards.
+The libraries most commonly used for computer vision, like OpenCV~\cite{src:open-cv} and PyTorch~\cite{src:pytorch}, use pixel coordinates for their operations on images, which makes it very convenient to use and incooperate.
 It makes it easy to annotate the dataset, as we can create a simple script to click on the objects in the images and save the pixel coordinates of the clicks as annotations, as shown in \cref{fig:pixel-annotations}.
+Even more, using some of the tools provided by the OpenCV~\cite{src:open-cv} library, we can even automate this clicking process.
+Its resulting annotation should be more accurate and consistent than a user clicking on the center of the object, purely visually.
+However, it is not 100\% consistent, as some objects were not detected and thus still required some manual clicking.
 
 \begin{figure}
     \centering
@@ -60,12 +68,12 @@ It makes it easy to annotate the dataset, as we can create a simple script to cl
     \label{fig:pixel-annotations}
 \end{figure}
 
-However, this way of annotating requires some post-processing to achive what we want, which is the real-world coordinates of the object so the robot arm can use them to grasp the objects.
+This way of annotating in pixel space, requires some post-processing to achive what we want, which is the real-world coordinates of the object so the robot arm can use them to grasp the objects.
 This transformation requires information about the characteristics of the camera, called the intrinsic parameters, as well as the position and orientation of the camera relative to the table, which are called the extrinsic parameters.
 The intrinsic parameters of the camera we are using, are provided by the Realsense SDK~\cite{src:RealSense-SDK} and should be very accurate, as they are measured and provided by the manufacturer.
-The extrinsic parameters need to be calibrated for each specific setup, they consist of a rotation and translation from the camera's coordinate system to the table's coordinate system.
-OpenCV~\cite{src:opencv} provides a convenient way to do this calibration, this being the ``findChessboardCorners'' function.
-It detects the corners of a chessboard pattern, as shown in \cref{fig:cv2-chessboard}, these corners can then be used to calculate the rotation and translation vector using the ``solvePnP'' function, which is also provided by OpenCV~\cite{src:opencv}.
+The extrinsic parameters need to be calibrated for each specific setup, they consist of a rotation and translation from the camera's coordinate system (pixel coordinates) to the table's coordinate system.
+OpenCV~\cite{src:open-cv} provides a convenient way to do this calibration, this being the ``findChessboardCorners'' function.
+It detects the corners of a chessboard pattern, as shown in \cref{fig:cv2-chessboard}, these corners can then be used to calculate the rotation and translation vector using the ``solvePnP'' function, which is also provided by OpenCV~\cite{src:open-cv}.
 Once the parameters are obtained, we can use them to transform the pixel coordinates of the objects to real-world coordinates.
 However, this process is not perfect and can introduce some errors, which can be a source of uncertainty in the dataset, which is something we want to avoid as much as possible.
 
@@ -76,7 +84,7 @@ However, this process is not perfect and can introduce some errors, which can be
     \label{fig:cv2-chessboard}
 \end{figure}
 
-\subsection{Real-world coordinates}\label{ch:dataset_section:setup_subsection:translation-from-pixel-to-world-coordinates}
+\subsection{Real-world coordinates}\label{ch:dataset_section:labeling_subsection:real-world-coordinates}
 We presume real-world coordinates as the coordinates measured in the physical world, in our case they are relative to an origin defined on the table.
 Since this way of doing the coordinates uses real measurements, it is more intuitive and directly usable for the robot arm.
 However, it comes with an important caveat, as it is more difficult to annotate data efficiently.
@@ -86,8 +94,71 @@ A better option is to use a predefined grid on the table, which we could detect 
 This is better, but we can not draw a grid on the table, as we would like the \gls{ai} to do inference without any outside assistance (like a grid).
 We thus need a way to create a ``virtual'' grid which can easily be removed from the images, but can still be used to measure the coordinates of the objects.
 This is where the black lines around the table come in.
-They are detected by the camera and used to create this virtual grid by connecting opposite lines.
-This is all done virtually before any labeling is done and saved as a reference for the labeling process.
+
+They could be detected by the camera~\cite{src:stackoverflow-linedetection} with the help of the OpenCV~\cite{src:open-cv} library and used to create this virtual grid by connecting opposite lines.
+However, this did not work well, as not all the lines were detected.
+This is most probably due to the lighting not being consistent enough for the filters used to detect the lines to work properly.
+An other problem is the resolution of the camera being too low to detect the individual lines, this was most prominent in the corners of the table where the lines are closest to each other.
+We ended up using a more manual approach, where we manually annotated the pixel coordinates of the center of the lines as well as the origin square.
+This introduces some human error, but still ensured we got a consistent and accurate enough grid to measure the real-world coordinates of the objects. 
+
+All this setting up of the grid, is done virtually before any labeling is done and saved as a reference for the labeling process.
 When using the system to either label the dataset or to do inference, the image is cropped so the black lines are not visible anymore.
 Now we have a way to measure the real-world coordinates of the objects without introducing too much human error, while still being able to remove the grid from the images so the \gls{ai} can do inference without any outside assistance.
 
+\subsection{Robot's position}\label{ch:dataset_section:labeling_subsection:robots-position}
+Ultimately, the robot arm needs to move itself to the correct position to be able to grasp the objects.
+This means that we could also use the robot's position as labels for the dataset.
+However, this, just as the real-world coordinates, is not that easy to annotate, as we need to move the robot arm to the correct position and then read out its coordinates.
+There is no easy trick (like using OpenCV~\cite{src:open-cv} for real-world coordinates) to do this fast, accurately but most of all consistent, so we would need to do this manually for each data point.
+
+
+\section{Capturing and using data}\label{ch:dataset_section:capturing-and-saving-data}
+
+\subsection{Collecting data}\label{ch:dataset_section:capturing-and-saving-data_subsection:collecting-data}
+To actually capture the data, we created a script which implements both the pixel-coordinates and real-world coordinates approach, this so we can choose which one to ultimately use for our models.
+It is an interactive script, which shows the RGB and depth images from the camera in real-time and allows us to capture the data by pressing a button.
+When the button is pressed, the script tries to automatically detect the center of the object.
+The user can then either accept the detected coordinates or manually click on the center of the object to correct the coordinates.
+After pinpointing the object's center, the script crops the image so the calibration lines are not visible anymore and saves the RGB and depth images.
+Following this, it calculates the real-world coordinates of the object and saves them along the pixel-coordinates in a JSON file, which is structured as shown in~\cref{lst:json-structure}.
+
+\begin{listing}
+\begin{minted}{json}
+{
+    "pixel": {
+        "x": 221,
+        "y": 62
+    },
+    "world": {
+        "x": 288.09246369430474,
+        "y": 134.27617670846834
+    }
+}
+\end{minted}
+\caption{Example of the JSON file structure.}
+\label{lst:json-structure}
+\end{listing}
+
+Each trio of RGB image, depth image and JSON file is considered one data point in the dataset, all with a unique identifier.
+
+\subsection{PyTorch Dataset}\label{ch:dataset_section:capturing-and-saving-data_subsection:pytorch-dataset}
+Since we are using the PyTorch~\cite{src:pytorch} framework for the training and evaluation of our models, we needed a way to easily load and preprocess the data in a way that is compatible with it.
+PyTorch~\cite{src:pytorch} provides a ``Dataset'' class, which is an abstract class that we can inherit from and implement our own dataset.
+
+We kept two options open when creating this class, as we wanted to keep as much options open as possible to differentiate between the different approaches.
+
+\begin{itemize}
+    \item Have a 3D tensor as input, which is the RGB image, or have a 4D tensor as input, which is the RGB image concatenated with the depth image.
+    \item Use the pixel coordinates as labels, or use the real-world coordinates as labels.
+\end{itemize}
+
+When looking at the depth images (of which an example is shown in~\cref{fig:sample}) captured by the Realsense camera, we noticed that they did not contain that much information about the object, as the objects are pretty small in height.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.4\textwidth]{static/depth-image.png}
+    \includegraphics[width=0.4\textwidth]{static/RGB-image.png}
+    \caption{An example of a depth image with its corresponding RGB image captured by the Realsense camera.}
+    \label{fig:sample}
+\end{figure}

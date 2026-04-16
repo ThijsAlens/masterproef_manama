@@ -11,7 +11,7 @@ class CustomDataset(torch.utils.data.Dataset):
     This class is used for loading the custom dataset for regression task.
     The dataset is organized in the following structure:
         ./source_dir_data/
-            image_001_colour.png
+            image_001_color.png
             image_001_depth.png
             image_001.json
         
@@ -40,21 +40,28 @@ class CustomDataset(torch.utils.data.Dataset):
         for file in os.listdir(source_dir):
             if file.endswith(".json"):
                 id = file[:-5]
-                colour_path = os.path.join(source_dir, f"{id}_colour.png")
+                color_path = os.path.join(source_dir, f"{id}_color.png")
                 depth_path = os.path.join(source_dir, f"{id}_depth.png")
                 json_path = os.path.join(source_dir, f"{id}.json")
-                if os.path.exists(colour_path) and os.path.exists(depth_path) and os.path.exists(json_path):
-                    self.data.append((colour_path, depth_path, json_path))
-                else:
-                    print(f"Warning: Missing depth or JSON for {id}")
+                if not os.path.exists(color_path): 
+                    print(f"Warning: Missing color image for {id}, path: {color_path}")
+                    continue
+                if not os.path.exists(depth_path):
+                    print(f"Warning: Missing depth image for {id}, path: {depth_path}")
+                    continue
+                if not os.path.exists(json_path):
+                    print(f"Warning: Missing JSON file for {id}, path: {json_path}")
+                    continue
+                self.data.append((color_path, depth_path, json_path))
+                
 
     def __len__(self):
         return len(self.data)
     
     def __getitem__(self, idx):
-        colour_path, depth_path, json_path = self.data[idx]
+        color_path, depth_path, json_path = self.data[idx]
 
-        image = Image.open(colour_path).convert("RGB")
+        image = Image.open(color_path).convert("RGB")
         color_tensor = transforms.ToTensor()(image)
         if self.include_depth:
             depth_image = Image.open(depth_path).convert("L")
