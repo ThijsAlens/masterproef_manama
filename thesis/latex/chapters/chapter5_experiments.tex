@@ -1,0 +1,78 @@
+% !TeX root = thesis.tex
+
+\chapter{Experiments}\label{ch:experiments}
+In this chapter, we will discuss the experiments we conducted to evaluate the performance of our uncertainty-aware object detection model. 
+We will describe the experiments done, present the obtained results, and analyze the performance of the model with a focus on its ability to capture and communicate uncertainty effectively.
+Finally, we will analyze the results and discuss their implications for the use of uncertainty-aware models in robotic applications.
+
+\section{Evaluation metrics}\label{ch:experiments_section:evaluation-metrics}
+To measure how good the model is performing, we need to have a way to see if the model is accurate (the mean prediction is close to the target) and if the uncertainty is communicated well (the uncertainty of the predictions is high when the error is high, and low when the error is low).
+This is a direct consequence of the chosen loss function, which is supposed to balance these two aspects.
+Using this loss function as inspiration, we can thus evaluate the model's performance for a given test-sample.
+
+\subsection{Mahalanobis Distance~\cite{src:Mahalanobis-Distance}}\label{ch:experiments_section:evaluation-metrics_subsection:mahalanobis-distance}
+Idealy, we would like the uncertainty of the model's prediction to be the same as the error of the model's prediction, as this would mean that the model is perfectly calibrated.
+For example, if the model predicts a value of 5 with an uncertainty of 0.5, and the true value is 5.5, then the error is 0.5 and the uncertainty is also 0.5, which means that the model is doing it is supposed to.
+As both of these values are in the same unit, it is quite easy to compare them.
+
+\begin{equation}\label{eq:score_element-wise}
+    \mathbf{D}_M^2(\mathbf{y}_n, \mathbf{x}_n) = \frac{(\mathbf{y}_n - \bm{\mu}_\theta(\mathbf{x}_n))^2}{\bm{\sigma}_\theta^2(\mathbf{x}_n)}
+\end{equation}
+
+As with the loss-function (\cref{eq:gaussian-nll-loss}), note that $\mathbf{y}_n$, $\bm{\mu}_\theta(\mathbf{x}_n)$ and $\bm{\sigma}_\theta^2(\mathbf{x}_n)$ are all 2D vectors, this to comply with our use case.
+\cref{eq:score_element-wise} is an element-wise version of the Mahalanobis Distance~\cite{src:Mahalanobis-Distance}.
+When used in multiple dimentions, this distance is calculated as in \cref{eq:mahalanobis-distance}, where $\Sigma$ (not to be confused with the symbol for summation $\sum$) is the covariance matrix of the distribution, which in our case is a diagonal matrix with the variances on the diagonal.
+However, this would sum up the errors and variances of all dimensions, which could muffele the performance of the model on certain dimensions, as a high error on one dimension could be compensated by a low error on another dimension.
+
+\begin{subequations}\label{eq:mahalanobis-distance}
+    \begin{align}
+        &D_M^2(\mathbf{y}_n, \mathbf{x}_n) = (\mathbf{y}_n - \bm{\mu}_\theta(\mathbf{x}_n))^T \Sigma^{-1} (\mathbf{y}_n - \bm{\mu}_\theta(\mathbf{x}_n)) \\
+        &D_M^2(\mathbf{y}_n, \mathbf{x}_n) = \sum_{i=1}^d \frac{(y_{n,i} - \mu_{\theta,i}(\mathbf{x}_n))^2}{\sigma_{\theta,i}^2(\mathbf{x}_n)}
+    \end{align}
+\end{subequations}
+
+While this already gives a great first insight into the model's performence, it can be improved.
+We would like the scores to be between 0 and 1, where 1 is the perfect score, exactly capturing a variance of 0.5 on a prediction of 5 with a target value of 5.5, and 0 is the worst score.
+It may also be that, for certain applications, we want the model to be more conservative or more aggressive in its uncertainty estimation.
+We thus need to add onto the \cref{eq:score_element-wise} so it incorporates these aspects.
+
+\begin{subequations}\label{eq:score_element-wise-final}
+    \begin{align}
+        &\mathbf{S}(\mathbf{y}_n, \mathbf{x}_n) = \exp \left\{ \lambda \left( 1 - \frac{(\mathbf{y}_n - \bm{\mu}_\theta(\mathbf{x}_n))^2}{\bm{\sigma}_\theta^2(\mathbf{x}_n)} - \log \frac{\bm{\sigma}_\theta^2(\mathbf{x}_n)}{(\mathbf{y}_n - \bm{\mu}_\theta(\mathbf{x}_n))^2} \right) \right\} \label{eq:nn-aleatoric-score} \\
+        &\mathbf{S}(\mathbf{y}_n, \mathbf{x}_n) = \exp \left\{ \lambda \left( 1 - \mathbf{D}_M^2(\mathbf{y}_n, \mathbf{x}_n) - \log \frac{1}{\mathbf{D}_M^2(\mathbf{y}_n, \mathbf{x}_n)} \right) \right\}
+    \end{align}
+\end{subequations}
+
+\cref{eq:score_element-wise-final} does exactly that, it adds a logarithmic term to the score, which penalizes the model for being too confident (i.e., having a low variance) when the error is high, and for being too uncertain (i.e., having a high variance) when the error is low.
+The $\lambda$ parameter allows us to tune the aggressiveness of the model's uncertainty estimation, where a higher $\lambda$ means that the model will be more aggressive in its uncertainty estimation, and a lower $\lambda$ means that the model will be more conservative.
+The exponential function along with the subtraction of 1 ensures that the score is between 0 and 1, where 1 is the perfect score and 0 is the worst score.
+
+\subsection{Total score}\label{ch:experiments_section:evaluation-metrics_subsection:total-score}
+The element-wise evalation metric is great, but still lacks the ability to evaluate the complete model's performence, as not all outputs of the model are used in one single score.
+We can however achive this by multiplying the two seperate scores, this way, when both individual scores are great, the total score also great, while when one or both individual scores is bad, the overall score will also be bad.
+\cref{eq:score_final} shows this score as it will be used throughout the tests.
+
+\begin{equation}\label{eq:score_final}
+    S(\mathbf{y}_n, \mathbf{x}_n) = \prod_{k=1}^{2} \exp \left\{ \lambda \left( 1 - D_{M, k}^2(y_{n, k}, \mathbf{x}_n) - \log \frac{1}{D_{M, k}^2(y_{n, k}, \mathbf{x}_n)} \right) \right\}
+\end{equation}
+
+\subsection{Error-uncertainty graph}
+The scores are well to cevaluate and compare single instances given to the models.
+It is however quite difficult to get a great idea of how the model is performing overall, on multiple samples.
+A graph, like shown in \cref{fig:error-uncertainty-graph_example}, gives a better overview of the models performence over a greater set of samples.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{static/error_variance_graph_example.png}
+    \caption{An example of an error-uncertainty graph.}
+    \label{fig:error-uncertainty-graph_example}
+\end{figure}
+
+Since both the variables are in mm and both should be concidered equally, we can plot the line on which a model is performing perfectly ($Uncertainty = Error$).
+A datapoint below the line is a model which is overconfident in its predictions, while a point above the line is a prediction where the model is underconfident.
+By having all the datapoints in the testset plotted on a graph, it is easy to see how a model is tuned.
+For example, the model, of which the graph is shown in \cref{fig:error-uncertainty-graph_example}, is underconfident.
+
+\section{Experiment 1: Evaluating on a test set}\label{ch:experiments_section:evaluating-on-a-test-set}
+
+\section{Experiment 2: Evaluating on out-of-distribution data}\label{ch:experiments_section:evaluating-on-out-of-distribution-data}

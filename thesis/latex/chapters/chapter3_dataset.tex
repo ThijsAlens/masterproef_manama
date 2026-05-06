@@ -23,7 +23,7 @@ It is a library which supports different languages like Python, C\#, ROS, etc. a
 We will use its Python binding, which is called ``pyrealsense2''.
 It allows us to easily setup and handle both the RGB and depth camera streams independently from each other.
 It also contains information about the intrinsic parameters of the camera, these embody the focal length and the principal point of the camera.
-Its importance will become clear in \cref{ch:dataset_section:setup_subsection:real-world-coordinates}.
+Its importance will become clear in \cref{ch:dataset_section:labeling_subsection:real-world-coordinates}.
 
 \subsection{Table and robot arm}\label{ch:dataset_section:setup_subsection:table-and-robot-arm}
 \paragraph{Table}
@@ -33,7 +33,7 @@ Each line is 2cm apart from each other and is used as a reference so we can capt
 The black square is used as the origin of this maden coordinate system, more specifically the bottom right corner of the square is the origin.
 The x-axis goes horizontally (relative to the camera's \gls{pov}) to the right, the y-axis goes vertically downwards.
 There is no z-axis defined as all the objects are roughly the same height; consequently, the robot arm only needs to know the x and y coordinates of the objects to be able to grasp them.
-More information about the specific use of the grid will be given in \cref{ch:dataset_section:setup_subsection:labeling}.
+More information about the specific use of the grid will be given in \cref{ch:dataset_section:labeling_subsection:real-world-coordinates}.
 
 \paragraph{Robot arm}
 The robot arm used in our setup is the ``ABB IRB 1200''~\cite{src:ABB-IRB1200}.
@@ -110,8 +110,10 @@ Now we have a way to measure the real-world coordinates of the objects without i
 Ultimately, the robot arm needs to move itself to the correct position to be able to grasp the objects.
 This means that we could also use the robot's position as labels for the dataset.
 However, this, just as the real-world coordinates, is not that easy to annotate, as we need to move the robot arm to the correct position and then read out its coordinates.
-There is no easy trick (like using OpenCV~\cite{src:open-cv} for real-world coordinates) to do this fast, accurately but most of all consistent, so we would need to do this manually for each data point.
+There is no easy trick (like using OpenCV~\cite{src:open-cv} for real-world coordinates) to do this fast, accurately but most of all consistent.
+We thus would need to do manually move the robot to the correct location for each data point.
 
+This takes a lot of time and introduces some human error and is not that consistent, so we opted against using the robot's position as labels for the dataset.
 
 \section{Capturing and using data}\label{ch:dataset_section:capturing-and-saving-data}
 

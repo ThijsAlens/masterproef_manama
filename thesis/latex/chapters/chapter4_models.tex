@@ -1,4 +1,131 @@
 % !TeX root = thesis.tex
 
-\chapter{Models for uncertainty aware object detection}\label{ch:models}
-In this chapter, we will discuss the different uncertainty-aware models discussed in \cref{ch:literature-study} and compare their adaptability to a real-world scenario.
+\chapter{Models for uncertainty aware object detection}\label{ch:models-for-uncertainty-aware-object-detection}
+In this chapter, we will discuss the different uncertainty-aware models discussed in \cref{ch:literature-study} and compare their ability to capture and communicate uncertainty.
+We will first discuss the way an uncertainty aware model is trained and evaluated, after which we will discuss the different models in more detail ending with a comparison of the different models for our use case.
+
+\section{The structure of an uncertainty aware model}\label{h:models-for-uncertainty-aware-object-detection_section:the-structure-of-an-uncertainty-aware-model}
+An uncertainty aware model differs from a normal model, in the sense that it needs to output its uncertainty alongside the prediction.
+
+The model's outputs a number of values, depending on what the application requires:
+If we want our model to output a single value, for example predicting the time it takes for a robot to move to a certain point, in a conventional model, it would output a value in seconds, for example 5.2 seconds.
+However, in an uncertainty aware model, it would output two values, for example 5.2 seconds and 0.8 seconds.
+The first value is the prediction, and the second value is the uncertainty of that prediction.
+In our case, we want to predict the position of an object in 2D space, so we want to output the x and y coordinates of the object, along with the uncertainty of those predictions.
+This means that our model will output four values, for example 57.2, 33.4, 0.8, 0.6.
+The first two values are the predicted x and y coordinates in mm, and the last two values are the uncertainty of those predictions also in mm.
+
+The way of computing the uncertainty of a prediction depends on the kind of uncertainty we want to cover.
+
+For aleatoric uncertainty, the uncertainty linked to the data, we can use a single model with two outputs.
+The model will learn the distribution of training data and, when trained properly, will be able to tell when something is off.
+In practice, we train a model with two outputs (one extra for every predicted value) the conventional way with a loss-function and back-propagation.
+How this is done in detail, will be discussed in~\cref{ch:models-for-uncertainty-aware-object-detection_section:training-evaluation}.
+
+Epistemic uncertainty, the uncertainty associated with the model parameters, is a bit more complex.
+It requires multiple models, according to bayes rule (\cref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:bayesian-neural-networks}) even all possible models, to capture the uncertainty.
+The idea of communicating the uncertainty in practice, is very related to aleatoric uncertainty, as it also outputs two values (one extra per predicted value), one prediction and an uncertainty value.
+However, the uncertainty value is no longer a value that the individual models need to learn, rather its the ``agreement or disagreement'' between the models.
+This ``agreement or disagreement'' can be interpreted in different ways depending on the application of the model.
+For regression tasks, the most obvious choise is the variance of the predictions, but it can also be an interval in which the predictions fall, or even a distribution where the user can ask for a specific confidence level.
+For classification tasks, the most obvious choice is the entropy of the predictions, but it can also be the variance of the predicted probabilities.
+Since we are using a regression model, we will focus on the different options for this type of model.
+
+The nice thing about the way uncertainty aware models are structured, is the fact that this is exactly the same for both aleatoric and epistemic uncertainty.
+A single model, which can only capture aleatoric uncertainty, will output a value for the prediction along with a value for the uncertainty.
+Multiple models combined to form a model which can capture epistemic uncertainty, will output a value for the prediction along with a value for the uncertainty.
+The difference lies in the way the uncertaitny is interpreted, for a single model, the uncertainty is a value that the model needs to learn, for multiple models, the uncertainty is a value that is derived from the agreement or disagreement between the models.
+
+\section{Training and evaluating uncertainty aware models}\label{ch:models-for-uncertainty-aware-object-detection_section:training-evaluation}
+Training an uncertainty aware model differs quite a bit from training a conventional \gls{nn}.
+This because of the nature of the models, wanting to communicate uncertainty along with the prediction.
+We thus need a way to train the model to include uncertainty in its predictions, and we also need a way to evaluate the model on its ability to capture and communicate uncertainty.
+There are a few ``new'' ways of thinking about when a model is doing what it is supposed to do, and when it is not:
+\begin{itemize}
+    \item If the model is sure about its prediction, and the prediction is correct, great! The model is doing its job.
+    \item If the model is sure about its prediction, but the prediction is wrong, then the model is not doing its job as it is unable to communicate its faults.
+    \item If the model is unsure about its prediction, and the prediction is wrong, then the model is doing its job as it is able to communicate it's uncertainty about its prediction.
+    \item If the model is unsure about its prediction, but the prediction is correct, then the model is not doing its job as it is unable to communicate its confidence in its prediction.
+\end{itemize}
+We need a way so these cases can be captured in a loss function, so that the model can learn to do what it is supposed to do.
+Fortunately, there already exist such a loss function, Gausian \gls{nll} loss~\cite{src:deep-ensemble-methods} (\cref{eq:gaussian-nll-loss}).
+
+\begin{equation}\label{eq:gaussian-nll-loss}
+    \mathcal{L} = -log(p_\theta(y_n|\mathbf{x}_n)) = \frac{log(\sigma^2_\theta(\mathbf{x}))}{2} + \frac{(y-\mu_\theta(\mathbf{x}))^2}{2\sigma^2_\theta(\mathbf{x})} + constant
+\end{equation}
+
+Where $\mu_\theta(\mathbf{x})$ is the predicted value, $\sigma^2_\theta(\mathbf{x})$ is the predicted uncertainty, and $y$ is the true value.
+In our case, $y_n$ is a 2D vector containing the x and y coordinates of the object, $\mu_\theta(\mathbf{x}_n)$ and $\sigma^2_\theta(\mathbf{x}_n)$ are also 2D vectors containing the predicted x and y coordinates and the predicted uncertainty of the object, respectively.
+These vectors do not change anything fundamental to the loss function.
+This loss function captures the cases we discussed above, as it penalizes the model for being sure about a wrong prediction, and it also penalizes the model for being unsure about a correct prediction.
+
+\section{Data scaling}\label{ch:models-for-uncertainty-aware-object-detection_section:data-scaling}
+During the training of the models below, we came across an issue related to the data.
+More specifically, the mismatching of the data's order of magnitude and the model's weights' order of magnitude.
+The data we gathered is in mm, so the values of the x and y coordinates are fairly big hovering between 10 and 500.
+The weights of the model, on the other hand, are initialized with small values, and during the training, they do not change much in terms of order of magnitude.
+This means that the model needs to somehow find a way to scale to match the order of magnitude of the outputs, which is very challenging.
+
+To solve this issue, we started by scaling the outputs of the model by a $10^{-3}$ factor, this so the model's outputs are somewhat in the same order of magnitude as the model's weights.
+This helped a lot, but is not the most elegant solution, as this factor is arbitrarily chosen and is not based on any theoretical foundation.
+
+A more elegant way of calculating this factor, is to use the data itself to calculate it.
+We can calculate the mean and standard deviation of the x and y coordinates in the training data, and use these to normalize the data.
+The scaling factor can be calculated as \cref{eq:scaling-factor}, which centers the data so it follows a standard normal distribution with zero mean and unit variance.
+Again, note the vectors in the equation, as we have two values for the x and y coordinates.
+
+\begin{equation}\label{eq:scaling-factor}
+    \mathbf{z} = \frac{\mathbf{y} - \bm{\mu}}{\bm{\sigma}}
+\end{equation}
+
+This way, the model's outputs are in the same order of magnitude as the model's weights, and the model can learn to predict values that are in the same order of magnitude as the data.
+After the forward pass of the model, we can then unscale the outputs to get the actual predictions in mm.
+
+\section{Deep ensembles}\label{ch:models-for-uncertainty-aware-object-detection_section:deep-ensembles}
+A deep ensemble, as explained in \cref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:deep-ensemble-methods}, is en ensemble of \glspl{dnn}.
+We explored two kind of deep architectures: a \gls{cnn} and a ResNet~\cite{src:resnet}, both with and without pretrained weights.
+
+The trainingloop we used is very similar to the approach described in \cref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:deep-ensemble-methods}.
+Training each model on its own, then combining them to be an ensemble.
+The architecture of the models was kept the same for all the models in the ensemble, the initalisation of the model's weights was varied as well as the way the taining examples were fed to the models.
+During the training, adverserial examples were generated to generalize the models.
+The loss function we used is the one described in \cref{ch:models-for-uncertainty-aware-object-detection_section:training-evaluation}.
+
+For our own convenience, we created a configuration file to easily change the architecture of the models, the way the training examples are fed to the models, some hyperparameters, etc.
+
+\subsection{Simple \gls{cnn}}\label{ch:models-for-uncertainty-aware-object-detection_section:deep-ensembles_subsection:simple-cnn}
+For our custom \gls{cnn}, we used a architecture which is easily changeable, so we can easily add or remove layers to see the effect on the performance of the model.
+Generally, the architecture consists of a few convolutional layers followed by a single fully connected layers.
+The first convolutional layer has 3 or 4 input channels, depending on the input data to include the depth channel or not.
+The fully connected layer should have 4 output channels, two for the predicted x and y coordinates, and two for the predicted uncertainty of those coordinates.
+
+As an example, say we have an architecture with three convolutional layers, the first one with 8 output channels, the second one with 32 output channels, and the third one with 64 output channels.
+After the convolutional layers, the output is flattened and fed to a fully connected layer with 4 output channels.
+
+\subsection{Pretrained ResNet\cite{src:resnet}}\label{ch:models-for-uncertainty-aware-object-detection_section:deep-ensembles_subsection:pretrained-resnet}
+ResNet~\cite{src:resnet} is a very popular architecture for image classification tasks, and it has been shown to perform well.
+The main idea behind ResNet is the use of residual connections (shown in \cref{fig:residual-block}), which allow the model to learn residual functions instead of direct mappings.
+This allows the model to learn more complex functions and to avoid the vanishing gradient problem, which is a common problem in deep learning.
+The architecture of ResNet is based on a series of residual blocks, which consist of two or three convolutional layers with a skip connection between the input and the output of the block.
+The number of residual blocks and the number of convolutional layers in each block can be varied to create different versions of ResNet, such as ResNet-18, ResNet-34, ResNet-50, etc.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\textwidth]{residual-block.png}
+    \caption{A residual block, the main building block of ResNet.}
+    \label{fig:residual-block}
+\end{figure}
+
+The ResNet architecture we used for our experiments is a ResNet-18, which is quite a small version of ResNet with, as the name implies, 18 residual blocks.
+The architecture, as is, is used for image classification tasks, so we needed to modify it to be used for our regression task.
+The main modification we made is to replace the final fully connected layer, which has 1000 output channels for the 1000 classes in ImageNet, with a fully connected layer with 4 output channels.
+
+The PyTorch~\cite{src:pytorch} library provides a convenient implementation of ResNet, along with pretrained weights.
+These are weights that have been trained on ImageNet-1K~\cite{src:imagenet}, a large dataset of images with 1000 classes.
+Using pretrained weights can be beneficial for our task, as we don't need to train the full architecture's weights from our own dataset, which would be too small for training such a large architecture.
+The pretrained weights can be used as a starting point for training our model, and we can fine-tune the model on our own dataset to adapt it to our specific task.
+
+\section{\gls{mc} dropout}\label{ch:models-for-uncertainty-aware-object-detection_section:mc-dropout}
+\gls{mc} dropout, as explained in \cref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:bayesian-neural-networks}, keeps dropout active during inference, creating an ensemble of models.
+The architecture of the model used for \gls{mc} dropout is similarly set up as the simple \gls{cnn} described in \cref{ch:models-for-uncertainty-aware-object-detection_section:deep-ensembles_subsection:simple-cnn}, also enabeling us to easily change the architecture of the model.
+The main difference is, of course, the addition of dropout layers after each convolutional layer.

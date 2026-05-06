@@ -4,8 +4,7 @@
 In this chapter, we discuss existing research relevant to uncertainty in \gls{ai} models and how it can be mapped to real-world scenarios.
 First, we will elaborate on what uncertainty is and different ways it can sneak in \gls{ai} models.
 Next, we will discuss how this uncertainty can be quantified.
-After that, we will dive into different existing methods to make \gls{ai} models uncertainty-aware and discuss how their ideas can be applied to object detection.
-Following that, we will look into ways data is gathered to train and evaluate uncertainty-aware models.
+Finally, we will dive into different existing methods to make \gls{ai} models uncertainty-aware and discuss how their ideas can be applied to a regression problem.
 
 \section{Uncertainty in AI} \label{ch:literature-study_section:uncertainty-in-ai}
 There are lots of complex systems that need to be modeled and understood.
@@ -86,7 +85,7 @@ The easiest way to train a model fitted for our task, is to have a dataset conta
 However, it should be noted that after the \gls{ai} has predicted the pixel coordinates of the center of the object, these coordinates need to be translated to real world coordinates for the robot arm to be able to grasp the object.
 This translation has a lot of opportunities for errors, which can cause a lot of uncertainty in the final output, uncertainty the model does not account for.
 It is better to train a model which directly outputs the real world coordinates of the center of the object, as this way the model can learn to output the uncertainty of the translation from pixel space to real world coordinates.
-This will be further discussed in \cref{ch:dataset_section:setup_subsection:labeling}.
+This will be further discussed in \cref{ch:dataset_section:labeling}.
 
 \section{Quantifying uncertainty} \label{ch:literature-study_section:quantifying-uncertainty}
 Models who can handle / quantify the uncertainties as described in~\ref{ch:introduction_section:positioning} are very sought-after in safety-critical applications like robot arm grasping.

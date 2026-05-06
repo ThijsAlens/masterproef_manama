@@ -62,12 +62,12 @@ class SimpleCNNRegressionModel(torch.nn.Module):
         output_size (int): The number of output features.
     """
     
-    def __init__(self, input_channels: int = 3, hidden_channels: list[int] = [16], output_size: int = 2):
+    def __init__(self, input_dims: tuple[int] = (3, 370, 250), hidden_channels: list[int] = [16], output_size: int = 2):
         super(SimpleCNNRegressionModel, self).__init__()
         
         # Convolutional Layers (with ReLU and MaxPool)
         self.conv_layers = []
-        current_channels = input_channels
+        current_channels = input_dims[0]
         for h_channels in hidden_channels:
             self.conv_layers.append(torch.nn.Conv2d(current_channels, h_channels, kernel_size=3, padding=1))
             self.conv_layers.append(torch.nn.ReLU())
@@ -76,7 +76,7 @@ class SimpleCNNRegressionModel(torch.nn.Module):
         self.conv_layers = torch.nn.Sequential(*self.conv_layers)
 
         # Flatten the output of the convolutional layers to feed into the fully connected layer
-        dummy_input = torch.zeros(1, input_channels, config.INPUT_DIMENSION[1], config.INPUT_DIMENSION[2])
+        dummy_input = torch.zeros(1, input_dims[0], input_dims[1], input_dims[2])
         dummy_output = self.conv_layers(dummy_input)
         flattened_size = dummy_output.view(1, -1).size(1)
         

@@ -1,6 +1,5 @@
 import torch
 from torch.utils.data import DataLoader, Subset
-from torchvision import transforms, datasets
 from torch.utils.tensorboard import SummaryWriter
 
 import random
@@ -9,11 +8,12 @@ from datetime import datetime
 from tqdm import tqdm
 import copy
 import os
+import json
 
 from models_to_test.ensemble.ensemble import DeepEnsemble, SimpleCNNRegressionModel
 from models_to_test.custom_training.gausian_NNL_loss import GaussianNLLLoss
 import models_to_test.ensemble.config as config
-from dataset.custom_dataset import CustomDataset 
+from torch_dataset.custom_dataset import CustomDataset 
 
 def set_seed(seed: int = 1) -> None:
     """
@@ -54,7 +54,7 @@ def training_step(model: torch.nn.Module, images: torch.Tensor, targets: torch.T
     
     # Forward pass
     mean_pred, var_pred = model(images)
-    loss_orig = loss_fn(mean_pred, var_pred, targets / 1000.0)  # Scale targets to meters for better numerical stability
+    loss_orig = loss_fn(mean_pred, var_pred, targets)
     
     # Calculate adversarial direction
     model.zero_grad()
@@ -66,7 +66,7 @@ def training_step(model: torch.nn.Module, images: torch.Tensor, targets: torch.T
         images_adv = images + epsilon * images.grad.sign()
         
     mean_adv, var_adv = model(images_adv)
-    loss_adv = loss_fn(mean_adv, var_adv, targets / 1000.0)
+    loss_adv = loss_fn(mean_adv, var_adv, targets)
     
     # Combine losses and step optimizer
     total_loss = loss_orig + loss_adv
@@ -96,7 +96,7 @@ def validation_step(model: torch.nn.Module, images: torch.Tensor, targets: torch
     model.eval()
     with torch.no_grad():
         mean_pred, var_pred = model(images)
-        val_loss = loss_fn(mean_pred, var_pred, targets / 1000.0)  # Scale targets to meters for better numerical stability
+        val_loss = loss_fn(mean_pred, var_pred, targets)
         writer.add_scalar(f"NLL_Loss/Val", val_loss.item(), epoch)
     return val_loss.item()
 
@@ -193,13 +193,23 @@ def test_ensemble(ensemble: DeepEnsemble, test_dataset: DataLoader, loss_fn=Gaus
         mean_pred, var_pred = ensemble.predict(images)
         
         targets = targets.to(device)
-        loss = loss_fn(mean_pred, var_pred, targets / 1000.0)
-        
+        loss = loss_fn(mean_pred, var_pred, targets)
         total_test_loss += loss.item()
         
-        all_means.append((mean_pred*1000).cpu())
-        all_vars.append((var_pred*(1000.0**2)).cpu())
-        all_targets.append(targets.cpu())
+        real_mean_x = (mean_pred[:, 0] * config.OUTPUT_BOUNDS['x_std']) + config.OUTPUT_BOUNDS['x_mean']
+        real_mean_y = (mean_pred[:, 1] * config.OUTPUT_BOUNDS['y_std']) + config.OUTPUT_BOUNDS['y_mean']
+        real_mean = torch.stack((real_mean_x, real_mean_y), dim=1)
+        all_means.append(real_mean.cpu())
+
+        real_var_x = var_pred[:, 0] * (config.OUTPUT_BOUNDS['x_std'] ** 2)
+        real_var_y = var_pred[:, 1] * (config.OUTPUT_BOUNDS['y_std'] ** 2)
+        real_var = torch.stack((real_var_x, real_var_y), dim=1)
+        all_vars.append(real_var.cpu())
+        
+        real_target_x = (targets[:, 0] * config.OUTPUT_BOUNDS['x_std']) + config.OUTPUT_BOUNDS['x_mean']
+        real_target_y = (targets[:, 1] * config.OUTPUT_BOUNDS['y_std']) + config.OUTPUT_BOUNDS['y_mean']
+        real_target = torch.stack((real_target_x, real_target_y), dim=1)
+        all_targets.append(real_target.cpu())
 
     avg_test_loss = total_test_loss / len(test_dataset)
     
@@ -212,14 +222,20 @@ def test_ensemble(ensemble: DeepEnsemble, test_dataset: DataLoader, loss_fn=Gaus
 
 if __name__ == "__main__":
     set_seed(config.SEED)
+    os.makedirs(config.PATH_TO_RESULTS_DIR, exist_ok=True)
 
-    train_loader = CustomDataset(source_dir=config.PATH_TO_TRAIN_DATA_DIR, include_depth=config.INCLUDE_DEPTH, world=True)
-    val_loader = DataLoader(CustomDataset(source_dir=config.PATH_TO_VALIDATION_DATA_DIR, include_depth=config.INCLUDE_DEPTH, world=True), batch_size=config.BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=torch.cuda.is_available())
-    test_loader = DataLoader(CustomDataset(source_dir=config.PATH_TO_TEST_DATA_DIR, include_depth=config.INCLUDE_DEPTH, world=True), batch_size=config.BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=torch.cuda.is_available())
+    train_loader = CustomDataset(source_dir=config.PATH_TO_TRAIN_DATA_DIR, include_depth=config.INCLUDE_DEPTH, world=True, bounds=config.OUTPUT_BOUNDS)
+    val_loader = DataLoader(CustomDataset(source_dir=config.PATH_TO_VALIDATION_DATA_DIR, include_depth=config.INCLUDE_DEPTH, world=True, bounds=config.OUTPUT_BOUNDS), batch_size=config.BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=torch.cuda.is_available())
+    test_loader = DataLoader(CustomDataset(source_dir=config.PATH_TO_TEST_DATA_DIR, include_depth=config.INCLUDE_DEPTH, world=True, bounds=config.OUTPUT_BOUNDS), batch_size=config.BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=torch.cuda.is_available())
 
     deep_ensemble = train_ensemble_bagging(num_models=config.NUM_MODELS, training_dataset=train_loader, validation_dataset=val_loader, model_parameters=config.MODEL_PARAMETERS, epochs=config.EPOCHS, lr=config.LR, batch_size=config.BATCH_SIZE, sample_ratio=config.BAGGING_SAMPLE_RATIO)
 
     results = test_ensemble(deep_ensemble, test_loader)
+
+    save_path = os.path.join(config.PATH_TO_RESULTS_DIR, f"test_results_{datetime.now().strftime('%Y-%m-%d')}.json")
+    with open(save_path, "w") as f:
+        json.dump([], f)  # Clear the file before appending results
+
     print(f"Test Loss: {results['loss']:.4f}")
     print(f"\n--- Final Results ---")
     for i in range(results['predictions'].shape[0]):
@@ -228,3 +244,12 @@ if __name__ == "__main__":
         
         target = results['targets'][i].numpy()
         print(f"Sample {i:<3} | Pred: [{pred[0]:>5.1f}, {pred[1]:>5.1f}] ± [{unc[0]:>5.1f}, {unc[1]:>5.1f}] mm | Target: [{target[0]:>5.1f}, {target[1]:>5.1f}]")
+        
+        current_file = json.load(open(save_path, "r"))
+        current_file.append({
+            "prediction": pred.tolist(),
+            "uncertainty": unc.tolist(),
+            "target": target.tolist()
+        })
+        with open(save_path, "w") as f:
+            json.dump(current_file, f, indent=4)
