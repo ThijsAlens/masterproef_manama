@@ -11,7 +11,7 @@ The view of the camera is a bit wider and longer then the table, but only the pa
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.8\textwidth]{static/setup.png}
+    \includegraphics[width=1\textwidth]{static/setup.png}
     \caption{The setup used.}
     \label{fig:setup}
 \end{figure}
@@ -159,8 +159,14 @@ When looking at the depth images (of which an example is shown in~\cref{fig:samp
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.4\textwidth]{static/depth-image.png}
     \includegraphics[width=0.4\textwidth]{static/RGB-image.png}
+    \includegraphics[width=0.4\textwidth]{static/depth-image.png}
     \caption{An example of a depth image with its corresponding RGB image captured by the Realsense camera.}
     \label{fig:sample}
 \end{figure}
+
+\subsection{Data split}\label{ch:dataset_section:capturing-and-saving-data_subsection:data-split}
+Now that we have the data required, we need to split it into a training and validation set.
+These need to stay independent from each other, as we want to evaluate the model's performance on data it has never seen before.
+We also wanted to keep a seperate test set, which is used to compare the different models on data similar to the training data, but which is still independent from the training and validation sets.
+A common split is 80\% for training, 10\% for validation and 10\% for testing, so this is what we ended up using as well.

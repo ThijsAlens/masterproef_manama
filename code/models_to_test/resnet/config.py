@@ -1,3 +1,4 @@
+# Val loss = 
 SEED = 1
 
 PATH_TO_TRAIN_DATA_DIR = "data/regression_use/train"
@@ -11,8 +12,9 @@ PATH_TO_RESULTS_DIR = "models_to_test/resnet/results"
 MODEL_PARAMETERS = {
     "input_dims": (3, 370, 250),
     "output_size": 2, # (x, y)
-    "freeze_backbone": False
+    "freeze_backbone": True
 }
+NUMBER_OF_RES_BLOCKS = 4                # 8 (total number of blocks is 8)
 
 OUTPUT_BOUNDS = {
     "x_mean": 231.21374610473245,
@@ -23,8 +25,8 @@ OUTPUT_BOUNDS = {
 
 INCLUDE_DEPTH = False                   # False
 
-NUM_MODELS = 3                          # 3
+NUM_MODELS = 5                          # 3
 EPOCHS = 100                            # 100
-LR = 1e-5                               # 1e-5
+LR = 1e-4                               # 1e-5
 BATCH_SIZE = 32                         # 32
-BAGGING_SAMPLE_RATIO = 0.9              # 0.8
+BAGGING_SAMPLE_RATIO = 1.0              # 0.8

@@ -1,10 +1,10 @@
 [
     {
-        "prediction": [
+        "mean_prediction": [
             147.046875,
             79.5252685546875
         ],
-        "uncertainty": [
+        "variance_prediction": [
             22.81672477722168,
             27.806196212768555
         ],
@@ -14,11 +14,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             307.39276123046875,
             256.9809265136719
         ],
-        "uncertainty": [
+        "variance_prediction": [
             18.398914337158203,
             17.29897689819336
         ],
@@ -28,11 +28,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             385.002685546875,
             124.44151306152344
         ],
-        "uncertainty": [
+        "variance_prediction": [
             51.12844467163086,
             31.05158233642578
         ],
@@ -42,11 +42,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             147.18026733398438,
             85.71038818359375
         ],
-        "uncertainty": [
+        "variance_prediction": [
             22.76275634765625,
             26.211427688598633
         ],
@@ -56,11 +56,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             230.94720458984375,
             223.5292510986328
         ],
-        "uncertainty": [
+        "variance_prediction": [
             11.171317100524902,
             13.574959754943848
         ],
@@ -70,11 +70,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             99.25798034667969,
             255.97006225585938
         ],
-        "uncertainty": [
+        "variance_prediction": [
             44.445533752441406,
             24.548728942871094
         ],
@@ -84,11 +84,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             52.20115661621094,
             183.96397399902344
         ],
-        "uncertainty": [
+        "variance_prediction": [
             46.1978874206543,
             12.14273452758789
         ],
@@ -98,11 +98,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             200.85716247558594,
             188.75448608398438
         ],
-        "uncertainty": [
+        "variance_prediction": [
             14.269710540771484,
             10.918801307678223
         ],
@@ -112,11 +112,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             135.22189331054688,
             220.45590209960938
         ],
-        "uncertainty": [
+        "variance_prediction": [
             23.086774826049805,
             12.51932430267334
         ],
@@ -126,11 +126,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             445.66650390625,
             82.41693878173828
         ],
-        "uncertainty": [
+        "variance_prediction": [
             53.3701286315918,
             34.86391830444336
         ],
@@ -140,11 +140,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             396.3289794921875,
             281.1641845703125
         ],
-        "uncertainty": [
+        "variance_prediction": [
             33.413570404052734,
             25.12142562866211
         ],
@@ -154,11 +154,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             339.4415588378906,
             105.28181457519531
         ],
-        "uncertainty": [
+        "variance_prediction": [
             20.60936164855957,
             19.422279357910156
         ],
@@ -168,11 +168,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             350.64031982421875,
             164.01914978027344
         ],
-        "uncertainty": [
+        "variance_prediction": [
             24.67774772644043,
             10.225139617919922
         ],
@@ -182,11 +182,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             254.48223876953125,
             101.98614501953125
         ],
-        "uncertainty": [
+        "variance_prediction": [
             17.199676513671875,
             27.11539649963379
         ],
@@ -196,11 +196,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             346.2151184082031,
             250.4794921875
         ],
-        "uncertainty": [
+        "variance_prediction": [
             29.700714111328125,
             19.477699279785156
         ],
@@ -210,11 +210,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             396.58575439453125,
             225.87884521484375
         ],
-        "uncertainty": [
+        "variance_prediction": [
             36.097679138183594,
             13.905011177062988
         ],
@@ -224,11 +224,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             126.87067413330078,
             93.7806167602539
         ],
-        "uncertainty": [
+        "variance_prediction": [
             29.39417266845703,
             24.68013572692871
         ],
@@ -238,11 +238,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             217.6417999267578,
             219.97010803222656
         ],
-        "uncertainty": [
+        "variance_prediction": [
             10.046586036682129,
             10.804645538330078
         ],
@@ -252,11 +252,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             100.51155090332031,
             273.565673828125
         ],
-        "uncertainty": [
+        "variance_prediction": [
             35.60573196411133,
             22.76141929626465
         ],
@@ -266,11 +266,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             176.41934204101562,
             106.67078399658203
         ],
-        "uncertainty": [
+        "variance_prediction": [
             17.01824378967285,
             20.273509979248047
         ],
@@ -280,11 +280,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             419.72052001953125,
             357.82672119140625
         ],
-        "uncertainty": [
+        "variance_prediction": [
             37.03260040283203,
             42.39722442626953
         ],
@@ -294,11 +294,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             317.9486999511719,
             101.15359497070312
         ],
-        "uncertainty": [
+        "variance_prediction": [
             21.38462257385254,
             25.10357666015625
         ],
@@ -308,11 +308,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             261.7217712402344,
             272.6646423339844
         ],
-        "uncertainty": [
+        "variance_prediction": [
             12.235979080200195,
             21.14685821533203
         ],
@@ -322,11 +322,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             71.46884155273438,
             176.75523376464844
         ],
-        "uncertainty": [
+        "variance_prediction": [
             40.70705032348633,
             11.264655113220215
         ],
@@ -336,11 +336,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             285.2423095703125,
             312.70263671875
         ],
-        "uncertainty": [
+        "variance_prediction": [
             14.162415504455566,
             28.300155639648438
         ],
@@ -350,11 +350,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             189.88027954101562,
             308.8118591308594
         ],
-        "uncertainty": [
+        "variance_prediction": [
             26.934730529785156,
             34.92351531982422
         ],
@@ -364,11 +364,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             363.334716796875,
             135.06170654296875
         ],
-        "uncertainty": [
+        "variance_prediction": [
             25.73170280456543,
             13.897659301757812
         ],
@@ -378,11 +378,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             376.77264404296875,
             264.8645324707031
         ],
-        "uncertainty": [
+        "variance_prediction": [
             30.026559829711914,
             20.086862564086914
         ],
@@ -392,11 +392,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             252.16641235351562,
             152.17408752441406
         ],
-        "uncertainty": [
+        "variance_prediction": [
             20.938430786132812,
             19.647336959838867
         ],
@@ -406,11 +406,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             177.00125122070312,
             278.67181396484375
         ],
-        "uncertainty": [
+        "variance_prediction": [
             35.58842849731445,
             39.13676834106445
         ],
@@ -420,11 +420,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             25.716476440429688,
             175.2155303955078
         ],
-        "uncertainty": [
+        "variance_prediction": [
             55.20532989501953,
             10.664852142333984
         ],
@@ -434,11 +434,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             233.08920288085938,
             319.1826477050781
         ],
-        "uncertainty": [
+        "variance_prediction": [
             29.597793579101562,
             46.75691604614258
         ],
@@ -448,11 +448,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             358.94110107421875,
             354.5726318359375
         ],
-        "uncertainty": [
+        "variance_prediction": [
             26.407869338989258,
             43.062068939208984
         ],
@@ -462,11 +462,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             413.13714599609375,
             -129.60691833496094
         ],
-        "uncertainty": [
+        "variance_prediction": [
             42.22645950317383,
             66.22565460205078
         ],
@@ -476,11 +476,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             359.45062255859375,
             103.50939178466797
         ],
-        "uncertainty": [
+        "variance_prediction": [
             23.686054229736328,
             20.325401306152344
         ],
@@ -490,11 +490,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             411.73541259765625,
             200.3321075439453
         ],
-        "uncertainty": [
+        "variance_prediction": [
             42.153011322021484,
             10.621394157409668
         ],
@@ -504,11 +504,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             213.92904663085938,
             209.9282989501953
         ],
-        "uncertainty": [
+        "variance_prediction": [
             14.887874603271484,
             13.806327819824219
         ],
@@ -518,11 +518,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             388.52740478515625,
             72.94352722167969
         ],
-        "uncertainty": [
+        "variance_prediction": [
             30.721736907958984,
             29.32522964477539
         ],
@@ -532,11 +532,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             294.6305847167969,
             80.18058776855469
         ],
-        "uncertainty": [
+        "variance_prediction": [
             16.896921157836914,
             31.735153198242188
         ],
@@ -546,11 +546,11 @@
         ]
     },
     {
-        "prediction": [
+        "mean_prediction": [
             62.15672302246094,
             158.89791870117188
         ],
-        "uncertainty": [
+        "variance_prediction": [
             40.345149993896484,
             12.192152976989746
         ],

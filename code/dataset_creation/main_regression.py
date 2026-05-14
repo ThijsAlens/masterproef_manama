@@ -60,12 +60,15 @@ def main():
     # Initialize the camera
     camera = RealSenseCamera()
     camera.start_stream()
-    camera.setup_matrices(mode="live") # Assuming this now loads your JSON map!
+    camera.setup_matrices(mode="live")
 
     while True:
         # Capture frames
         color_image = camera.get_frame(stream=rs.stream.color)
         depth_image = camera.get_frame(stream=rs.stream.depth)
+
+        save_color_image = camera.get_frame(stream=rs.stream.color, straighten=True, crop=True)
+        save_depth_image = camera.get_frame(stream=rs.stream.depth, straighten=True, crop=True)
         
         if color_image is not None and depth_image is not None:
             # --- 1. Draw Crop Box on Live Feed ---
@@ -135,9 +138,6 @@ def main():
                         
                         img_path = os.path.join(config.ROOT_DIRECTORY, img_filename)
                         json_path = os.path.join(config.ROOT_DIRECTORY, json_filename)
-
-                        save_color_image = camera.get_frame(stream=rs.stream.color, straighten=True, crop=True)
-                        save_depth_image = camera.get_frame(stream=rs.stream.depth, straighten=True, crop=True)
                         
                         camera.save_frame(save_color_image, save_depth_image, file_path=img_path)
                         

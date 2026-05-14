@@ -2,7 +2,7 @@ import torch
 
 from models_to_test.ensemble import config
 
-class DeepEnsemble:
+class DeepEnsemble(torch.nn.Module):
     """
     A simple implementation of a deep ensemble model for regression.
     
@@ -16,7 +16,7 @@ class DeepEnsemble:
         if len(models) < 2:
             raise ValueError("Ensemble requires at least two models.")
 
-        self.models = models
+        self.models = torch.nn.ModuleList(models)
         for model in self.models:
             model.to(self.device)
             model.eval()
@@ -29,24 +29,25 @@ class DeepEnsemble:
          Returns:
             tuple[torch.Tensor, torch.Tensor]: The ensemble prediction and uncertainty (mean and variance of the predictions from the individual models).
         """
+        self.eval()
         X = X.to(self.device)
         with torch.no_grad():
             means = []
-            vars_ = []
+            vars = []
             
             for model in self.models:
                 mean, variance = model(X)
                 means.append(mean)
-                vars_.append(variance)
+                vars.append(variance)
                 
             means = torch.stack(means)
-            vars_ = torch.stack(vars_)
+            vars = torch.stack(vars)
 
             # Ensemble Mean calculation
             ensemble_mean = means.mean(dim=0)
             
             # Ensemble Variance calculation (total uncertainty = aleatoric + epistemic)
-            ensemble_var = (vars_ + means**2).mean(dim=0) - ensemble_mean**2
+            ensemble_var = (vars + means**2).mean(dim=0) - ensemble_mean**2
 
             return ensemble_mean, ensemble_var
 
@@ -69,7 +70,7 @@ class SimpleCNNRegressionModel(torch.nn.Module):
         self.conv_layers = []
         current_channels = input_dims[0]
         for h_channels in hidden_channels:
-            self.conv_layers.append(torch.nn.Conv2d(current_channels, h_channels, kernel_size=3, padding=1))
+            self.conv_layers.append(torch.nn.Conv2d(current_channels, h_channels, kernel_size=5, padding=2))
             self.conv_layers.append(torch.nn.ReLU())
             self.conv_layers.append(torch.nn.MaxPool2d(kernel_size=2, stride=2))
             current_channels = h_channels

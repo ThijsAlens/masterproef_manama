@@ -1,3 +1,5 @@
+# Val loss = -2.7008
+
 SEED = 1
 
 PATH_TO_TRAIN_DATA_DIR = "data/regression_use/train"
@@ -10,7 +12,7 @@ PATH_TO_RESULTS_DIR = "models_to_test/ensemble/results"
 
 MODEL_PARAMETERS = {
     "input_dims": (3, 370, 250),
-    "hidden_channels": [8, 32, 64],     # [64, 32, 8]
+    "hidden_channels": [8, 16, 32],     # [8, 16, 32]
     "output_size": 2 # (x, y)
 }
 
@@ -23,8 +25,8 @@ OUTPUT_BOUNDS = {
 
 INCLUDE_DEPTH = False                   # False
 
-NUM_MODELS = 3                          # 3
-EPOCHS = 100                            # 100
-LR = 1e-3                               # 1e-3
+NUM_MODELS = 5                          # 5
+EPOCHS = 60                             # 60
+LR = 5e-4                               # 5e-4
 BATCH_SIZE = 32                         # 32
-BAGGING_SAMPLE_RATIO = 0.8              # 0.8
+BAGGING_SAMPLE_RATIO = 1.0              # 1.0

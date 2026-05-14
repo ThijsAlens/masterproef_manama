@@ -78,7 +78,7 @@ def training_step(model: torch.nn.Module, images: torch.Tensor, targets: torch.T
     total_loss.backward()
     optimizer.step()
     
-    writer.add_scalar(f"{loss_fn.__class__.__name__}/Train", total_loss.item(), epoch)
+    writer.add_scalar(f"NLL_Loss/Train", total_loss.item(), epoch)
     return total_loss.item()
 
 def validation_step(model: torch.nn.Module, images: torch.Tensor, targets: torch.Tensor, loss_fn: torch.nn.Module, writer: SummaryWriter, epoch: int) -> float:
@@ -100,7 +100,7 @@ def validation_step(model: torch.nn.Module, images: torch.Tensor, targets: torch
     with torch.no_grad():
         mean_pred, var_pred = model(images)
         val_loss = loss_fn(mean_pred, var_pred, targets)
-        writer.add_scalar(f"{loss_fn.__class__.__name__}/Val", val_loss.item(), epoch)
+        writer.add_scalar(f"NLL_Loss/Val", val_loss.item(), epoch)
     return val_loss.item()
 
 def train_mc_dropout(train_loader: DataLoader, val_loader: DataLoader, model_parameters: dict, num_epochs: int=10, lr: float=1e-3) -> None:
@@ -148,7 +148,7 @@ def train_mc_dropout(train_loader: DataLoader, val_loader: DataLoader, model_par
         model.load_state_dict(best_model_wts)
         print(f"Best validation loss: {best_val_loss:.4f}")
         os.makedirs(config.PATH_TO_SAVE_MODEL_DIR, exist_ok=True)
-        save_path = os.path.join(config.PATH_TO_SAVE_MODEL_DIR, f"{run_name}.pth")
+        save_path = os.path.join(config.PATH_TO_SAVE_MODEL_DIR, f"{datetime.now().strftime('%Y-%m-%d')}.pth")
         torch.save(model.state_dict(), save_path)
     return MC_Dropout(model, n_samples=config.NUM_SAMPLES)
 
@@ -165,18 +165,21 @@ def test_mc_dropout(mc_dropout: MC_Dropout, test_loader: DataLoader, loss_fn: to
         None
     """
     device = mc_dropout.device
+
     total_test_loss = 0.0
     all_means = []
     all_vars = []
     all_targets = []
 
     for images, targets in test_loader:
-        images, targets = images.to(device), targets.to(device)
         mean_pred, var_pred = mc_dropout.predict(images)
 
+        targets = targets.to(device)
         loss = loss_fn(mean_pred, var_pred, targets)
+        
         total_test_loss += loss.item()
 
+        # Undo normalization done in torch_dataset.custom_dataset to get real-world coordinates in mm
         real_mean_x = (mean_pred[:, 0] * config.OUTPUT_BOUNDS['x_std']) + config.OUTPUT_BOUNDS['x_mean']
         real_mean_y = (mean_pred[:, 1] * config.OUTPUT_BOUNDS['y_std']) + config.OUTPUT_BOUNDS['y_mean']
         real_mean = torch.stack((real_mean_x, real_mean_y), dim=1)
@@ -195,11 +198,44 @@ def test_mc_dropout(mc_dropout: MC_Dropout, test_loader: DataLoader, loss_fn: to
     avg_test_loss = total_test_loss / len(test_loader)
 
     return {
-        "test_loss": avg_test_loss,
-        "pred_means": torch.cat(all_means),
-        "pred_vars": torch.cat(all_vars),
+        "average_test_loss": avg_test_loss,
+        "predictions": torch.cat(all_means),
+        "variances": torch.cat(all_vars),
         "targets": torch.cat(all_targets)
     }
+
+def save_results(results: dict, save_path: str, print_results: bool = True) -> None:
+    """
+    Save the test results to a JSON file.
+
+    Args:
+        results (dict): The dictionary containing the test results to save.
+        save_path (str): The file path where the results should be saved.
+        print_results (bool): Whether to print the results to the console (default: True).
+
+    Returns:
+        None
+    """
+    with open(save_path, "w") as f:
+        json.dump([], f)  # Clear the file before appending results
+
+    for i in range(results['predictions'].shape[0]):
+        prediction = results['predictions'][i].numpy()
+        variance = results['variances'][i].numpy()
+        target = results['targets'][i].numpy()
+
+        if print_results:
+            print(f"Sample {i:<3} | Pred: [{prediction[0]:>5.1f}, {prediction[1]:>5.1f}] | Var: [{variance[0]:>5.1f}, {variance[1]:>5.1f}] mm | Target: [{target[0]:>5.1f}, {target[1]:>5.1f}]")
+
+        current_file = json.load(open(save_path, "r"))
+        current_file.append({
+            "mean_prediction": prediction.tolist(),
+            "variance_prediction": variance.tolist(),
+            "target": target.tolist()
+        })
+        with open(save_path, "w") as f:
+            json.dump(current_file, f, indent=4)
+    return
 
 if __name__ == "__main__":
     set_seed(config.SEED)
@@ -211,26 +247,14 @@ if __name__ == "__main__":
 
     model = train_mc_dropout(train_loader, val_loader, model_parameters=config.MODEL_PARAMETERS, num_epochs=config.EPOCHS, lr=config.LR)
     
-    test_results = test_mc_dropout(model, test_loader)
 
-    save_path = os.path.join(config.PATH_TO_RESULTS_DIR, f"test_results_{datetime.now().strftime('%Y-%m-%d')}.json")
-    with open(save_path, "w") as f:
-        json.dump([], f)  # Clear the file before appending results
+    val_save_path = os.path.join(config.PATH_TO_RESULTS_DIR, f"validationset_results_{datetime.now().strftime('%Y-%m-%d')}.json")
+    val_results = test_mc_dropout(model, val_loader)
+    print(f"Average validation loss: {val_results['average_test_loss']:.4f}")
+    save_results(val_results, val_save_path)
     
-    print(f"Test Loss: {test_results['test_loss']:.4f}")
-    print(f"\n--- Final Results ---")
-    for i in range(test_results['pred_means'].shape[0]):
-        pred = test_results['pred_means'][i].numpy()
-        unc = np.sqrt(test_results['pred_vars'][i].numpy())
 
-        target = test_results['targets'][i].numpy()
-        print(f"Sample {i:<3} | Pred: [{pred[0]:>5.1f}, {pred[1]:>5.1f}] ± [{unc[0]:>5.1f}, {unc[1]:>5.1f}] mm | Target: [{target[0]:>5.1f}, {target[1]:>5.1f}]")
-        
-        current_file = json.load(open(save_path, "r"))
-        current_file.append({
-            "prediction": pred.tolist(),
-            "uncertainty": unc.tolist(),
-            "target": target.tolist()
-        })
-        with open(save_path, "w") as f:
-            json.dump(current_file, f, indent=4)
+    test_save_path = os.path.join(config.PATH_TO_RESULTS_DIR, f"testset_results_{datetime.now().strftime('%Y-%m-%d')}.json")
+    test_results = test_mc_dropout(model, test_loader)
+    print(f"Average test loss: {test_results['average_test_loss']:.4f}")
+    save_results(test_results, test_save_path)

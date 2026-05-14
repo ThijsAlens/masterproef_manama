@@ -1,4 +1,4 @@
-ROOT_DIRECTORY = "data/regression" # Change this to "data/object-detection" for the object detection dataset
+ROOT_DIRECTORY = "data/test/lighting" # Change this to "data/object-detection" for the object detection dataset
 CLASSES = \
     {
         "disk": 0,

@@ -142,13 +142,6 @@ class RealSenseCamera:
             np.savetxt(f_R, self.R_matrix)
 
         # --- Set up the pixel to real world coordinate mapping for the current calibration ---
-        if mode == "live":
-            input("Change to the lines to calibrate the pixel to real world mapping and press Enter to continue...")
-        
-        # Load the pixel to real world conversion info from the specified file path
-        if mode == "setup":
-            # This mode is used to set up the pixel to real world conversion info based on the lines image, no further action should be taken with this instance of the camera.
-            return
         with open(cam_config.CALIBRATION_MAPPING_FILEPATH, 'r') as f:
             self.pixel_to_real_world_conversion_info = json.load(f)
         return

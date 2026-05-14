@@ -168,7 +168,10 @@ def train_ensemble_bagging(num_models: int=5, training_dataset: DataLoader=None,
         ensemble_models.append(model)
         writer.close()
 
-    return DeepEnsemble(ensemble_models)
+    ensemble = DeepEnsemble(ensemble_models)
+    torch.save(ensemble.state_dict(), os.path.join(config.PATH_TO_SAVE_MODEL_DIR, f"deep_ensemble_{datetime.now().strftime('%Y-%m-%d')}.pth"))
+
+    return ensemble
 
 def test_ensemble(ensemble: DeepEnsemble, test_dataset: DataLoader, loss_fn=GaussianNLLLoss()) -> dict[str, any]:
     """
@@ -194,8 +197,10 @@ def test_ensemble(ensemble: DeepEnsemble, test_dataset: DataLoader, loss_fn=Gaus
         
         targets = targets.to(device)
         loss = loss_fn(mean_pred, var_pred, targets)
+
         total_test_loss += loss.item()
         
+        # Undo normalization done in torch_dataset.custom_dataset to get real-world coordinates in mm
         real_mean_x = (mean_pred[:, 0] * config.OUTPUT_BOUNDS['x_std']) + config.OUTPUT_BOUNDS['x_mean']
         real_mean_y = (mean_pred[:, 1] * config.OUTPUT_BOUNDS['y_std']) + config.OUTPUT_BOUNDS['y_mean']
         real_mean = torch.stack((real_mean_x, real_mean_y), dim=1)
@@ -214,11 +219,44 @@ def test_ensemble(ensemble: DeepEnsemble, test_dataset: DataLoader, loss_fn=Gaus
     avg_test_loss = total_test_loss / len(test_dataset)
     
     return {
-        "loss": avg_test_loss,
+        "average_loss": avg_test_loss,
         "predictions": torch.cat(all_means),
-        "uncertainty": torch.cat(all_vars),
+        "variances": torch.cat(all_vars),
         "targets": torch.cat(all_targets)
     }
+
+def save_results(results: dict, save_path: str, print_results: bool = True) -> None:
+    """
+    Save the test results to a JSON file.
+
+    Args:
+        results (dict): The dictionary containing the test results to save.
+        save_path (str): The file path where the results should be saved.
+        print_results (bool): Whether to print the results to the console (default: True).
+
+    Returns:
+        None
+    """
+    with open(save_path, "w") as f:
+        json.dump([], f)  # Clear the file before appending results
+
+    for i in range(results['predictions'].shape[0]):
+        prediction = results['predictions'][i].numpy()
+        variance = results['variances'][i].numpy()
+        target = results['targets'][i].numpy()
+
+        if print_results:
+            print(f"Sample {i:<3} | Pred: [{prediction[0]:>5.1f}, {prediction[1]:>5.1f}] | Var: [{variance[0]:>5.1f}, {variance[1]:>5.1f}] mm | Target: [{target[0]:>5.1f}, {target[1]:>5.1f}]")
+
+        current_file = json.load(open(save_path, "r"))
+        current_file.append({
+            "mean_prediction": prediction.tolist(),
+            "variance_prediction": variance.tolist(),
+            "target": target.tolist()
+        })
+        with open(save_path, "w") as f:
+            json.dump(current_file, f, indent=4)
+    return
 
 if __name__ == "__main__":
     set_seed(config.SEED)
@@ -230,26 +268,12 @@ if __name__ == "__main__":
 
     deep_ensemble = train_ensemble_bagging(num_models=config.NUM_MODELS, training_dataset=train_loader, validation_dataset=val_loader, model_parameters=config.MODEL_PARAMETERS, epochs=config.EPOCHS, lr=config.LR, batch_size=config.BATCH_SIZE, sample_ratio=config.BAGGING_SAMPLE_RATIO)
 
-    results = test_ensemble(deep_ensemble, test_loader)
+    val_save_path = os.path.join(config.PATH_TO_RESULTS_DIR, f"validationset_results_{datetime.now().strftime('%Y-%m-%d')}.json")
+    val_results = test_ensemble(deep_ensemble, val_loader)
+    print(f"Average Validation Loss: {val_results['average_loss']:.4f}")
+    save_results(val_results, val_save_path)
 
-    save_path = os.path.join(config.PATH_TO_RESULTS_DIR, f"test_results_{datetime.now().strftime('%Y-%m-%d')}.json")
-    with open(save_path, "w") as f:
-        json.dump([], f)  # Clear the file before appending results
-
-    print(f"Test Loss: {results['loss']:.4f}")
-    print(f"\n--- Final Results ---")
-    for i in range(results['predictions'].shape[0]):
-        pred = results['predictions'][i].numpy()
-        unc = np.sqrt(results['uncertainty'][i].numpy()) 
-        
-        target = results['targets'][i].numpy()
-        print(f"Sample {i:<3} | Pred: [{pred[0]:>5.1f}, {pred[1]:>5.1f}] ± [{unc[0]:>5.1f}, {unc[1]:>5.1f}] mm | Target: [{target[0]:>5.1f}, {target[1]:>5.1f}]")
-        
-        current_file = json.load(open(save_path, "r"))
-        current_file.append({
-            "prediction": pred.tolist(),
-            "uncertainty": unc.tolist(),
-            "target": target.tolist()
-        })
-        with open(save_path, "w") as f:
-            json.dump(current_file, f, indent=4)
+    test_save_path = os.path.join(config.PATH_TO_RESULTS_DIR, f"testset_results_{datetime.now().strftime('%Y-%m-%d')}.json")
+    test_results = test_ensemble(deep_ensemble, test_loader)
+    print(f"Average Test Loss: {test_results['average_loss']:.4f}")
+    save_results(test_results, test_save_path)

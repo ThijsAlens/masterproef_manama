@@ -87,20 +87,50 @@ We explored two kind of deep architectures: a \gls{cnn} and a ResNet~\cite{src:r
 
 The trainingloop we used is very similar to the approach described in \cref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:deep-ensemble-methods}.
 Training each model on its own, then combining them to be an ensemble.
+
 The architecture of the models was kept the same for all the models in the ensemble, the initalisation of the model's weights was varied as well as the way the taining examples were fed to the models.
+By differing the initialisation of the model's weights and the shuffeling of training examples, the models in the ensemble are different enough to obtain a good result~\cite{src:deep-ensemble-methods}.
+This means bagging is not needed, however, it is implemented, so it can be easily turned on if needed.
+
 During the training, adverserial examples were generated to generalize the models.
 The loss function we used is the one described in \cref{ch:models-for-uncertainty-aware-object-detection_section:training-evaluation}.
+
+We trained 5 models for each ensemble, as suggested by the paper~\cite{src:deep-ensemble-methods}, but this could also easily be changed.
 
 For our own convenience, we created a configuration file to easily change the architecture of the models, the way the training examples are fed to the models, some hyperparameters, etc.
 
 \subsection{Simple \gls{cnn}}\label{ch:models-for-uncertainty-aware-object-detection_section:deep-ensembles_subsection:simple-cnn}
 For our custom \gls{cnn}, we used a architecture which is easily changeable, so we can easily add or remove layers to see the effect on the performance of the model.
-Generally, the architecture consists of a few convolutional layers followed by a single fully connected layers.
-The first convolutional layer has 3 or 4 input channels, depending on the input data to include the depth channel or not.
-The fully connected layer should have 4 output channels, two for the predicted x and y coordinates, and two for the predicted uncertainty of those coordinates.
+Generally, the architecture consists of a few ``convolutional blocks'' followed by a single fully connected layers.
+A ``convolutional block'' consists of a convolutional layer, followed by a ReLU activation function and a max pooling layer.
+The kernal size and padding of the convolutional layers are kept constant at 5 and 2 respectively, as are the kernel size of 2 and stride a stride of 2 for the max pooling layers.
+The number of channels of the convolutional layers and the number of convolutional blocks can be easily changed in the configuration file.
 
-As an example, say we have an architecture with three convolutional layers, the first one with 8 output channels, the second one with 32 output channels, and the third one with 64 output channels.
-After the convolutional layers, the output is flattened and fed to a fully connected layer with 4 output channels.
+The first convolutional layer's input channels are fixed at 3 or 4, depending on the input data to include the depth channel or not, while its output channels can be changed.
+The fully connected layer's output channels are also fixed at 4, two for the predicted x and y coordinates, and two for the predicted variance of those coordinates.
+
+As an example, say we have an architecture with three ``convolutional blocks'', the first one with 8 output channels, the second one with 32, and the third one with 64.
+After the ``convolutional blocks'', the output is flattened and fed to a fully connected layer with 4 output channels.
+
+\paragraph{Comparing architectures}\label{ch:models-for-uncertainty-aware-object-detection_section:deep-ensembles_subsection:simple-cnn_comparing-architectures}
+We tested a lot of different combinations of architectures and hyperparameters.
+We compared them using the validation loss on the full ensemble as well as the individual validation losses of the models in the ensemble.
+\cref{tab:simple-cnn-architectures-comparison} shows the results of some of the architectures we tested.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{c !{\vrule width 2pt} c|c|c|c|c !{\vrule width 2pt} c}
+        \textbf{Index} & \textbf{Architecture} & \textbf{Lr} & \textbf{Br} & \textbf{Epochs} & \textbf{m} & \textbf{Loss} \\
+        \hline
+        1 & [8, 16, 32] & 5e-4 & 1.0 & 60 & 5 & loss \\
+    \end{tabular}
+    \caption{
+        Comparison of different architectures for the simple CNN model.
+        ``Lr'' stands for learning rate, ``Br'' stands for bagging ratio, ``m'' stands for the number of models in the ensemble, and ``Loss'' stands for the ensemble validation loss.
+    }
+    \label{tab:simple-cnn-architectures-comparison}
+\end{table}
+
 
 \subsection{Pretrained ResNet\cite{src:resnet}}\label{ch:models-for-uncertainty-aware-object-detection_section:deep-ensembles_subsection:pretrained-resnet}
 ResNet~\cite{src:resnet} is a very popular architecture for image classification tasks, and it has been shown to perform well.
@@ -116,7 +146,7 @@ The number of residual blocks and the number of convolutional layers in each blo
     \label{fig:residual-block}
 \end{figure}
 
-The ResNet architecture we used for our experiments is a ResNet-18, which is quite a small version of ResNet with, as the name implies, 18 residual blocks.
+The ResNet architecture we used for our experiments is a ResNet-18, which is quite a small version of ResNet with 8 residual blocks.
 The architecture, as is, is used for image classification tasks, so we needed to modify it to be used for our regression task.
 The main modification we made is to replace the final fully connected layer, which has 1000 output channels for the 1000 classes in ImageNet, with a fully connected layer with 4 output channels.
 
@@ -125,7 +155,44 @@ These are weights that have been trained on ImageNet-1K~\cite{src:imagenet}, a l
 Using pretrained weights can be beneficial for our task, as we don't need to train the full architecture's weights from our own dataset, which would be too small for training such a large architecture.
 The pretrained weights can be used as a starting point for training our model, and we can fine-tune the model on our own dataset to adapt it to our specific task.
 
+In \cref{tab:resnet-architectures-comparison}, we show the results of some of the architectures we tested for the ResNet model, both with and without pretrained weights.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{c !{\vrule width 2pt} c|c|c|c|c|c !{\vrule width 2pt} c}
+        \textbf{Index} & \textbf{Architecture} & \textbf{Lr} & \textbf{Br} & \textbf{Epochs} & \textbf{m} & \textbf{PW} & \textbf{Loss} \\
+        \hline
+        1 & [8, 16, 32] & 0.001 & 1.0 & 60 & 5 & Yes & loss \\
+    \end{tabular}
+    \caption{
+        Comparison of different architectures for the ResNet model.
+        ``Lr'' stands for learning rate, ``Br'' stands for bagging ratio, ``m'' stands for the number of models in the ensemble, ``PW'' stands for pretrained weights used, and ``Loss'' stands for the ensemble validation loss.
+    }
+    \label{tab:resnet-architectures-comparison}
+\end{table}
+
 \section{\gls{mc} dropout}\label{ch:models-for-uncertainty-aware-object-detection_section:mc-dropout}
 \gls{mc} dropout, as explained in \cref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:bayesian-neural-networks}, keeps dropout active during inference, creating an ensemble of models.
 The architecture of the model used for \gls{mc} dropout is similarly set up as the simple \gls{cnn} described in \cref{ch:models-for-uncertainty-aware-object-detection_section:deep-ensembles_subsection:simple-cnn}, also enabeling us to easily change the architecture of the model.
-The main difference is, of course, the addition of dropout layers after each convolutional layer.
+The main difference is, of course, the addition of dropout layers to the ``convolutional blocks''.
+The dropout rate of each block can easily be changed so we can see the effect of different dropout rates on the performance of the model.
+
+The training loop is a bit different from the one used for deep ensembles, as we only need to train a single model.
+This model is trained like all the models in a deep ensemble, with the same loss function and the same way of feeding the training examples, adversarial training, etc.
+There is the difference of having dropout available during training, so not using it would be a missed opportunity to regularize the model, so we keep it active during training as well.
+
+\cref{tab:mc-dropout-architectures-comparison} shows the results of some of the architectures we tested for the \gls{mc} dropout model.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{c !{\vrule width 2pt} c|c|c|c|c|c !{\vrule width 2pt} c}
+        \textbf{Index} & \textbf{Architecture} & \textbf{DR} & \textbf{Lr} & \textbf{Br} & \textbf{Epochs} & \textbf{F} & \textbf{Loss} \\
+        \hline
+        1 & [32, 64, 128] & 0.1 & $1\cdot10^{-4}$ & 1.0 & 100 & 100 & loss \\
+    \end{tabular}
+    \caption{
+        Comparison of different architectures for the \gls{mc} dropout model.
+        ``DR'' stands for dropout rate at each layer, ``Lr'' stands for learning rate, ``Br'' stands for bagging ratio, ``F'' stands for the number of forward passes, and ``Loss'' stands for the model's validation loss.
+    }
+    \label{tab:mc-dropout-architectures-comparison}
+\end{table}

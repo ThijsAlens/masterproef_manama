@@ -8,58 +8,98 @@ Finally, we will analyze the results and discuss their implications for the use 
 \section{Evaluation metrics}\label{ch:experiments_section:evaluation-metrics}
 To measure how good the model is performing, we need to have a way to see if the model is accurate (the mean prediction is close to the target) and if the uncertainty is communicated well (the uncertainty of the predictions is high when the error is high, and low when the error is low).
 This is a direct consequence of the chosen loss function, which is supposed to balance these two aspects.
-Using this loss function as inspiration, we can thus evaluate the model's performance for a given test-sample.
+There are a few ways we can evaluate the model's performance, each with their own focus and advantages.
+The datapoints used for evaluation obviously need to be different from the datapoints used for training and validation to avoid data leakage.
 
-\subsection{Mahalanobis Distance~\cite{src:Mahalanobis-Distance}}\label{ch:experiments_section:evaluation-metrics_subsection:mahalanobis-distance}
-Idealy, we would like the uncertainty of the model's prediction to be the same as the error of the model's prediction, as this would mean that the model is perfectly calibrated.
-For example, if the model predicts a value of 5 with an uncertainty of 0.5, and the true value is 5.5, then the error is 0.5 and the uncertainty is also 0.5, which means that the model is doing it is supposed to.
-As both of these values are in the same unit, it is quite easy to compare them.
+\subsection{Loss Function}\label{ch:experiments_section:evaluation-metrics_subsection:loss-function}
+The most obvious choise to evaluate a given model, is to use the loss function.
+This is a great way to have a single number to compare the capability of the model while keeping the balance of the error and uncertainty.
 
-\begin{equation}\label{eq:score_element-wise}
-    \mathbf{D}_M^2(\mathbf{y}_n, \mathbf{x}_n) = \frac{(\mathbf{y}_n - \bm{\mu}_\theta(\mathbf{x}_n))^2}{\bm{\sigma}_\theta^2(\mathbf{x}_n)}
-\end{equation}
+It is the most important metric from a theoretical point of view, as it tells us exactly how well the model is at estimating its own weaknesses and strengths.
+However, it is not the best metric to use for our use case, as it does not give us the ability to translate the loss into a value which has a clear meaning in our context.
 
-As with the loss-function (\cref{eq:gaussian-nll-loss}), note that $\mathbf{y}_n$, $\bm{\mu}_\theta(\mathbf{x}_n)$ and $\bm{\sigma}_\theta^2(\mathbf{x}_n)$ are all 2D vectors, this to comply with our use case.
-\cref{eq:score_element-wise} is an element-wise version of the Mahalanobis Distance~\cite{src:Mahalanobis-Distance}.
-When used in multiple dimentions, this distance is calculated as in \cref{eq:mahalanobis-distance}, where $\Sigma$ (not to be confused with the symbol for summation $\sum$) is the covariance matrix of the distribution, which in our case is a diagonal matrix with the variances on the diagonal.
-However, this would sum up the errors and variances of all dimensions, which could muffele the performance of the model on certain dimensions, as a high error on one dimension could be compensated by a low error on another dimension.
+\subsection{Uncertainty intervals}\label{ch:experiments_section:evaluation-metrics_subsection:uncertainty-intervals}
+In the end, the models need to be used as a part of a robotic system without causing any harm to the environment.
+We thus need a way to evaluate the model's performance in a way that can easily be translated into the real world.
+Seeing that the model is outputting a mean and a variance, the step to statistical measures of error and uncertainty is quite small.
 
-\begin{subequations}\label{eq:mahalanobis-distance}
+We want to be able to say something about the certainty of the error of the mean prediction.
+For example, we want to be able to say that we are 95\% certain that the error that the mean prediction falls in a certain interval.
+This means that the model can, with 95\% certainty, predict an interval of $[\bm{\mu}_\theta - \bm{\epsilon}, \bm{\mu}_\theta + \bm{\epsilon}]$ which contains the target value.
+Note that the model is outputting a mean and a variance, both for the $x$ and $y$ coordinates of the target position, so $\bm{\mu_\theta}$ is a 2D vector.
+
+The $\epsilon$, is a product of the $\sigma_\theta$ and the Z-score. 
+The Z-score maps the desired confidence (for example, 95\%) level to a standard normal distribution where $\mu=0$ and $\sigma=1$.
+\cref{eq:epsilon_calculation} shows how to calculate $\epsilon$ for a given confidence level $\alpha$ and a variance $\sigma^2_\theta$.
+
+\begin{subequations}\label{eq:epsilon_calculation}
     \begin{align}
-        &D_M^2(\mathbf{y}_n, \mathbf{x}_n) = (\mathbf{y}_n - \bm{\mu}_\theta(\mathbf{x}_n))^T \Sigma^{-1} (\mathbf{y}_n - \bm{\mu}_\theta(\mathbf{x}_n)) \\
-        &D_M^2(\mathbf{y}_n, \mathbf{x}_n) = \sum_{i=1}^d \frac{(y_{n,i} - \mu_{\theta,i}(\mathbf{x}_n))^2}{\sigma_{\theta,i}^2(\mathbf{x}_n)}
+        \epsilon(\alpha, \sigma^2_\theta) &= z_\alpha \cdot \sigma_\theta \\
+        \epsilon(\alpha, \sigma^2_\theta) &= z_\alpha \cdot \sqrt{\sigma^2_\theta}
+    \end{align}
+\end{subequations}
+Note that the variables $\epsilon$, $\sigma_\theta$, and $\sigma^2_\theta$ are scalars, this thus holds in one dimension.
+To go to two dimensions, we need to change one thing, the $z_\alpha$.
+In one dimension, the $z_\alpha$ is a single value, but in two dimensions, we need to use a value from the chi-squared distribution with 2 degrees of freedom.
+\cref{eq:epsilon_calculation_2d} shows how to calculate $\bm{\epsilon}$ for a given confidence level $\alpha$ and a variance $\bm{\sigma^2_\theta}$.
+
+\begin{subequations}\label{eq:epsilon_calculation_2d}
+    \begin{align}
+        \bm{\epsilon}(\alpha, \bm{\sigma}^2_\theta) &= \sqrt{\bm{\chi}^2_\alpha} \cdot \bm{\sigma}_\theta \\
+        \bm{\epsilon}(\alpha, \bm{\sigma}^2_\theta) &= \sqrt{\bm{\chi}^2_\alpha} \cdot \sqrt{\bm{\sigma}^2_\theta}
     \end{align}
 \end{subequations}
 
-While this already gives a great first insight into the model's performence, it can be improved.
-We would like the scores to be between 0 and 1, where 1 is the perfect score, exactly capturing a variance of 0.5 on a prediction of 5 with a target value of 5.5, and 0 is the worst score.
-It may also be that, for certain applications, we want the model to be more conservative or more aggressive in its uncertainty estimation.
-We thus need to add onto the \cref{eq:score_element-wise} so it incorporates these aspects.
+Let's take a concrete example to make this more clear.
+The model outputs a mean prediction of $\bm{\mu}_\theta=[50, 55]mm$ and a variance of $\bm{\sigma}^2_\theta=[4, 9]mm^2$.
+We want to make an interval prediction with a confidence level of 95\%.
+The $\chi^2$ value for 95\% confidence level and 2 degrees of freedom is 5.991.
+Using \cref{eq:epsilon_calculation_2d}, we can calculate $\bm{\epsilon}$, which comes out to be $\bm{\epsilon}=[4.90, 7.34]mm$.
+This then gives us the following interval prediction: 
 
-\begin{subequations}\label{eq:score_element-wise-final}
+$x \in [50 - 4.90, 50 + 4.90]mm$ and $y \in [55 - 7.34, 55 + 7.34]mm$.
+
+These intervals, give a great way to evaluate the model's performance in a way that can be easily translated into the real world.
+
+\subsection{Classifying predictions based on error and uncertainty}
+Using the interval predictions from \cref{ch:experiments_section:evaluation-metrics_subsection:uncertainty-intervals} along with the target value, opens up the possibility to classify the predictions into different categories based on their error and uncertainty.
+The following situations can occur:
+
+\begin{itemize}
+    \item The model is confident it will succeed in grasping the object, and it does. This is a \gls{tp}. This is the ideal situation, as the model is accurate and confident in its predictions.
+    \item The model is not confident it will succeed in grasping the object, but it does. This is a \gls{fp}. This is a missed opportunity, as the model is timid
+    \item The model is confident it will succeed in grasping the object, but it does not. This is a \gls{fn}. This leads to dangerous situations, as the model is overconfident.
+    \item The model is not confident it will succeed in grasping the object, and it does not. This is a \gls{tn}. This is a safe situation, as the model is cautious when it should be.
+\end{itemize}
+
+To actually do this classification, we need to define the $max\_error$ the model can make while still grabbing the object successfully.
+This is a value that can be defined based on the specific use case, which in our case is the radiance of the object to be grasped, which is 15mm.
+This value is then translated, using \cref{eq:max_variance}, to a $maximum\_variance$ using the $\chi^2$ value for the desired confidence level and the number of dimensions, which is 95\% and 2 respectively in our case.
+
+\begin{equation}\label{eq:max_variance}
+    maximum\_variance = \frac{max\_error^2}{\chi^2_\alpha}
+\end{equation}
+
+This gives us all the necessary information to calculate whether a prediction's confidence is not misplaced (\cref{eq:confidence}), as well as whether the prediction is actually accurate enough (\cref{eq:success}).
+
+\begin{subequations}
     \begin{align}
-        &\mathbf{S}(\mathbf{y}_n, \mathbf{x}_n) = \exp \left\{ \lambda \left( 1 - \frac{(\mathbf{y}_n - \bm{\mu}_\theta(\mathbf{x}_n))^2}{\bm{\sigma}_\theta^2(\mathbf{x}_n)} - \log \frac{\bm{\sigma}_\theta^2(\mathbf{x}_n)}{(\mathbf{y}_n - \bm{\mu}_\theta(\mathbf{x}_n))^2} \right) \right\} \label{eq:nn-aleatoric-score} \\
-        &\mathbf{S}(\mathbf{y}_n, \mathbf{x}_n) = \exp \left\{ \lambda \left( 1 - \mathbf{D}_M^2(\mathbf{y}_n, \mathbf{x}_n) - \log \frac{1}{\mathbf{D}_M^2(\mathbf{y}_n, \mathbf{x}_n)} \right) \right\}
+        max(\bm{\sigma}_\theta^2) &<= maximum\_variance \label{eq:confidence} \\
+        \sqrt{\sum_{k=1}^{d}(\bm{\mu}_k - \bm{y}_k)^2} &<= max\_error \label{eq:success}
     \end{align}
 \end{subequations}
 
-\cref{eq:score_element-wise-final} does exactly that, it adds a logarithmic term to the score, which penalizes the model for being too confident (i.e., having a low variance) when the error is high, and for being too uncertain (i.e., having a high variance) when the error is low.
-The $\lambda$ parameter allows us to tune the aggressiveness of the model's uncertainty estimation, where a higher $\lambda$ means that the model will be more aggressive in its uncertainty estimation, and a lower $\lambda$ means that the model will be more conservative.
-The exponential function along with the subtraction of 1 ensures that the score is between 0 and 1, where 1 is the perfect score and 0 is the worst score.
-
-\subsection{Total score}\label{ch:experiments_section:evaluation-metrics_subsection:total-score}
-The element-wise evalation metric is great, but still lacks the ability to evaluate the complete model's performence, as not all outputs of the model are used in one single score.
-We can however achive this by multiplying the two seperate scores, this way, when both individual scores are great, the total score also great, while when one or both individual scores is bad, the overall score will also be bad.
-\cref{eq:score_final} shows this score as it will be used throughout the tests.
-
-\begin{equation}\label{eq:score_final}
-    S(\mathbf{y}_n, \mathbf{x}_n) = \prod_{k=1}^{2} \exp \left\{ \lambda \left( 1 - D_{M, k}^2(y_{n, k}, \mathbf{x}_n) - \log \frac{1}{D_{M, k}^2(y_{n, k}, \mathbf{x}_n)} \right) \right\}
-\end{equation}
+If both of these conditions are satisfied, we have a \gls{tp}.
+If the first condition is satisfied, but the second condition is not, we have a \gls{fp}.
+If the first condition is not satisfied, but the second condition is, we have a \gls{fn}.
+If both conditions are not satisfied, we have a \gls{tn}.
 
 \subsection{Error-uncertainty graph}
-The scores are well to cevaluate and compare single instances given to the models.
-It is however quite difficult to get a great idea of how the model is performing overall, on multiple samples.
-A graph, like shown in \cref{fig:error-uncertainty-graph_example}, gives a better overview of the models performence over a greater set of samples.
+The statistical scores are well to cevaluate and compare single instances given to the models.
+The loss gives a general idea of how well the model is performing.
+But both of these metrics fail to give a greater overview of how the model is performing over a greater set of samples.
+The classification of predictions aids with this, but fails to communicate its hyperparameters and the severity of the errors and uncertainties.
+A graph, like shown in \cref{fig:error-uncertainty-graph_example}, gives a better overview of the models performence over a greater set of samples and the hyperparameters.
 
 \begin{figure}
     \centering
@@ -68,11 +108,56 @@ A graph, like shown in \cref{fig:error-uncertainty-graph_example}, gives a bette
     \label{fig:error-uncertainty-graph_example}
 \end{figure}
 
-Since both the variables are in mm and both should be concidered equally, we can plot the line on which a model is performing perfectly ($Uncertainty = Error$).
-A datapoint below the line is a model which is overconfident in its predictions, while a point above the line is a prediction where the model is underconfident.
-By having all the datapoints in the testset plotted on a graph, it is easy to see how a model is tuned.
-For example, the model, of which the graph is shown in \cref{fig:error-uncertainty-graph_example}, is underconfident.
+The y-axis of the graph shows the uncertainty of a given prediction, this is the $\sqrt{\sigma_{\theta, i}^2}$ of the model's output.
+The x-axis shows the error made by the model, this is calculated as $y_i - \mu_{\theta, i}$.
+The graph is devided into 4 zones, each corresponding to a certainty level ($\alpha$) of the model's predictions:
+
+\begin{itemize}
+    \item Blue zone ($\alpha=0.68$): It is te be expected that 68\% of the predictions fall in this zone, as this is the center of the normal distribution. This is the "Cautious" zone, as the model is underconfident in its predictions.
+    \item Green zone ($\alpha=0.95$): It is to be expected that 27\% of the predictions fall in this zone, as this is the area between the 68\% and 95\% confidence levels of the normal distribution. This is the "Sweet Spot" zone, as the model is well calibrated in this zone.
+    \item Orange and red zone ($\lim_{\alpha \to 1}$): It is to be expected that 5\% of the predictions fall in this zone, as this is the area above the 95\% confidence level of the normal distribution. This is the "Danger" zone, as the model is blindly confident in its predictions while being way off.
+\end{itemize}
 
 \section{Experiment 1: Evaluating on a test set}\label{ch:experiments_section:evaluating-on-a-test-set}
+The first test we conducted was to evaluate the model's on a test set.
+This test set does not differ from the training and validation set in terms of the distribution of the data, but it does differ in terms of the specific samples used.
+It would be expected that the models perform well on this and perform similarly to how they performed on the validation set.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{c !{\vrule width 2pt} c|c|c|c|c}
+        \textbf{Model index} & \textbf{Loss} & \textbf{TP} & \textbf{FP} & \textbf{FN} & \textbf{TN} \\
+        \hline
+        Deep Ensemble () & loss & TP & FP & FN & TN \\
+        ResNet Ensemble () & loss & TP & FP & FN & TN \\
+        MC Dropout () & loss & TP & FP & FN & TN \\
+    \end{tabular}
+    \caption{
+        Comparison of the different models on the test set.
+        }
+    \label{tab:models_comparison_test_set}
+\end{table}
+
+\begin{figure}[]
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/error-uncertainty-graph_deep-ensemble_1.png}
+        \caption{Error-uncertainty graph for Deep Ensemble 1.}
+        \label{sub_fig:error-uncertainty-graph_example_1}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/error-uncertainty-graph_deep-ensemble_2.png}
+        \caption{Error-uncertainty graph for Deep Ensemble 2.}
+        \label{sub_fig:error-uncertainty-graph_example_2}
+    \end{subfigure}
+    \caption{Error-uncertainty graphs for the Deep Ensemble models on the test set.}
+    \label{fig:Error-uncertainty-graphs_test-set_deep-ensembles}
+\end{figure}
 
 \section{Experiment 2: Evaluating on out-of-distribution data}\label{ch:experiments_section:evaluating-on-out-of-distribution-data}
+\subsection{Multiple objects in the scene}
+\subsection{Difficult lighting}
+\subsection{Human intervention}

@@ -2,9 +2,9 @@ import torch
 import torch.nn.functional as F
 import torchvision.models as models
 
-from models_to_test.ensemble import config
+from models_to_test.resnet import config
 
-class DeepEnsemble:
+class DeepEnsemble(torch.nn.Module):
     """
     A simple implementation of a deep ensemble model for regression.
     
@@ -18,7 +18,7 @@ class DeepEnsemble:
         if len(models) < 2:
             raise ValueError("Ensemble requires at least two models.")
 
-        self.models = models
+        self.models = torch.nn.ModuleList(models)
         for model in self.models:
             model.to(self.device)
             model.eval()
@@ -31,6 +31,7 @@ class DeepEnsemble:
          Returns:
             tuple[torch.Tensor, torch.Tensor]: The ensemble prediction and uncertainty (mean and variance of the predictions from the individual models).
         """
+        self.eval()
         X = X.to(self.device)
         with torch.no_grad():
             means = []
@@ -55,7 +56,11 @@ class DeepEnsemble:
 class ResNetRegressionModel(torch.nn.Module):
     """
     A pretrained ResNet model adapted for regression tasks with aleatoric uncertainty.
-    Outputs both the mean and variance for each prediction.
+    Only using the first few layers of ResNet as a feature extractor and adding custom fully connected layers on top to output both mean and variance.
+        Args:
+            input_dims (tuple[int]): The dimensions of the input tensor (channels, height, width). Default is (3, 370, 250).
+            output_size (int): The number of regression targets. Default is 2 (e.g., x and y coordinates).
+            freeze_backbone (bool): Whether to freeze the weights of the ResNet backbone during training. Default is True.
     """
     def __init__(self, input_dims: tuple[int] = (3, 370, 250), output_size: int = 2, freeze_backbone: bool = True):
         super(ResNetRegressionModel, self).__init__()
@@ -81,11 +86,11 @@ class ResNetRegressionModel(torch.nn.Module):
             with torch.no_grad():
                 self.resnet.conv1.weight[:, :3, :, :] = old_conv.weight
         
-        self.feature_extractor = torch.nn.Sequential(*list(self.resnet.children())[:-2])
+        self.feature_extractor = torch.nn.Sequential(*list(self.resnet.children())[:-(config.NUMBER_OF_RES_BLOCKS-10)])
 
         if freeze_backbone:
             for name, param in self.feature_extractor.named_parameters():
-                if "conv1" not in name or "layer4" not in name: # Don't freeze our custom input layer or the last layer of the backbone
+                if "conv1" not in name and "layer4" not in name: # Don't freeze our custom input layer or the last layer of the backbone
                     param.requires_grad = False
                 
         # Addapt the final fully connected layer (and averagepooling before it) to output both mean and variance
@@ -105,6 +110,6 @@ class ResNetRegressionModel(torch.nn.Module):
         raw_variance = x[:, self.output_size:]
 
         # Ensure variance is positive and add small value for numerical stability
-        variance = F.softplus(raw_variance) + 1e-6
+        variance = F.softplus(raw_variance) + 1e-2
         
         return mean, variance
