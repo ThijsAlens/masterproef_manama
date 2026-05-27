@@ -2,12 +2,12 @@
 # Config for test_statistics.py
 # ---------------------------------------------------------------------
 
-JSON_FILE_PATH = "models_to_test/MC_dropout/results/test_results_2026-05-13.json"
-DIR_TO_SAVE = "testing/graphs"
+JSON_FILE_PATH = "testing/models_to_test/results/jsons/deep_ensemble_6_validation.json"
+DIR_TO_SAVE = "testing/models_to_test/results/graphs"
 
-SHOW_GRAPH = True
-CONFIDENCE_INTERVAL = 0.95
-ACCEPTABLE_ERROR_THRESHOLD_MM = 20.0
+SHOW_GRAPH = False
+CONFIDENCE = 0.95
+ACCEPTABLE_ERROR_THRESHOLD_MM = 25.0
 
 
 import os
@@ -16,9 +16,9 @@ os.makedirs(DIR_TO_SAVE, exist_ok=True)
 # --------------------------------------------------------------------
 # Config for test_model.py
 # ---------------------------------------------------------------------
-PATH_TO_TEST_DATA_DIR = "data/test/human"
-PATH_TO_MODEL = ""
-PATH_TO_RESULTS_FILE = "testing/model_tests/ensemble.json"
+PATH_TO_TEST_DATA_DIR = "data/regression_use/validation"
+PATH_TO_MODEL = "testing/models_to_test/deep_ensemble_6.pth"
+PATH_TO_RESULTS_FILE = JSON_FILE_PATH
 
 INCLUDE_DEPTH = False
 OUTPUT_BOUNDS = {
@@ -30,4 +30,5 @@ OUTPUT_BOUNDS = {
 BATCH_SIZE = 32
 
 
+# Code so the filepaths exist
 os.makedirs(os.path.dirname(PATH_TO_RESULTS_FILE), exist_ok=True)

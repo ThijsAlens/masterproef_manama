@@ -1,0 +1,442 @@
+[
+    {
+        "mean_prediction": [
+            58.184051513671875,
+            202.96827697753906
+        ],
+        "aleatoric_variance_predictions": [
+            30.465394973754883,
+            5.696287631988525
+        ],
+        "epistemic_variance_predictions": [
+            1419.65234375,
+            507.7381286621094
+        ],
+        "total_variance_predictions": [
+            1450.1177978515625,
+            513.4343872070312
+        ],
+        "target": [
+            65.37248229980469,
+            163.63880920410156
+        ]
+    },
+    {
+        "mean_prediction": [
+            215.6912841796875,
+            279.3757629394531
+        ],
+        "aleatoric_variance_predictions": [
+            14.535040855407715,
+            9.189216613769531
+        ],
+        "epistemic_variance_predictions": [
+            8283.7392578125,
+            12769.513671875
+        ],
+        "total_variance_predictions": [
+            8298.2744140625,
+            12778.703125
+        ],
+        "target": [
+            342.456787109375,
+            139.2955322265625
+        ]
+    },
+    {
+        "mean_prediction": [
+            229.3577423095703,
+            76.51652526855469
+        ],
+        "aleatoric_variance_predictions": [
+            45.77572250366211,
+            20.17367935180664
+        ],
+        "epistemic_variance_predictions": [
+            9694.9267578125,
+            3625.832763671875
+        ],
+        "total_variance_predictions": [
+            9740.703125,
+            3646.00634765625
+        ],
+        "target": [
+            349.06524658203125,
+            127.32360076904297
+        ]
+    },
+    {
+        "mean_prediction": [
+            401.3985290527344,
+            222.01763916015625
+        ],
+        "aleatoric_variance_predictions": [
+            1.2563267946243286,
+            5.845176696777344
+        ],
+        "epistemic_variance_predictions": [
+            3485.823974609375,
+            119.42555236816406
+        ],
+        "total_variance_predictions": [
+            3487.080078125,
+            125.27073669433594
+        ],
+        "target": [
+            277.9496765136719,
+            307.85601806640625
+        ]
+    },
+    {
+        "mean_prediction": [
+            102.00485229492188,
+            210.55491638183594
+        ],
+        "aleatoric_variance_predictions": [
+            4.752135276794434,
+            1.7015280723571777
+        ],
+        "epistemic_variance_predictions": [
+            1368.61474609375,
+            1764.6009521484375
+        ],
+        "total_variance_predictions": [
+            1373.366943359375,
+            1766.302490234375
+        ],
+        "target": [
+            124.62783813476562,
+            220.65199279785156
+        ]
+    },
+    {
+        "mean_prediction": [
+            -86.97366333007812,
+            135.24461364746094
+        ],
+        "aleatoric_variance_predictions": [
+            6.600893020629883,
+            1.405311942100525
+        ],
+        "epistemic_variance_predictions": [
+            29282.21484375,
+            1709.869384765625
+        ],
+        "total_variance_predictions": [
+            29288.814453125,
+            1711.274658203125
+        ],
+        "target": [
+            188.071533203125,
+            199.76718139648438
+        ]
+    },
+    {
+        "mean_prediction": [
+            26.244094848632812,
+            218.23745727539062
+        ],
+        "aleatoric_variance_predictions": [
+            7.269010066986084,
+            4.711886405944824
+        ],
+        "epistemic_variance_predictions": [
+            11281.9384765625,
+            3656.186279296875
+        ],
+        "total_variance_predictions": [
+            11289.20703125,
+            3660.898193359375
+        ],
+        "target": [
+            180.9780731201172,
+            150.54617309570312
+        ]
+    },
+    {
+        "mean_prediction": [
+            31.847732543945312,
+            230.280029296875
+        ],
+        "aleatoric_variance_predictions": [
+            10.873863220214844,
+            5.097012042999268
+        ],
+        "epistemic_variance_predictions": [
+            485.5451354980469,
+            1093.0465087890625
+        ],
+        "total_variance_predictions": [
+            496.4189758300781,
+            1098.1435546875
+        ],
+        "target": [
+            152.35922241210938,
+            165.1311492919922
+        ]
+    },
+    {
+        "mean_prediction": [
+            482.794189453125,
+            158.16595458984375
+        ],
+        "aleatoric_variance_predictions": [
+            27.687814712524414,
+            8.731947898864746
+        ],
+        "epistemic_variance_predictions": [
+            13888.3662109375,
+            108.5660171508789
+        ],
+        "total_variance_predictions": [
+            13916.0537109375,
+            117.29796600341797
+        ],
+        "target": [
+            332.99981689453125,
+            141.06423950195312
+        ]
+    },
+    {
+        "mean_prediction": [
+            243.91285705566406,
+            118.74397277832031
+        ],
+        "aleatoric_variance_predictions": [
+            19.83656883239746,
+            9.5903902053833
+        ],
+        "epistemic_variance_predictions": [
+            2065.369140625,
+            6704.66015625
+        ],
+        "total_variance_predictions": [
+            2085.20556640625,
+            6714.25048828125
+        ],
+        "target": [
+            342.456787109375,
+            139.2955322265625
+        ]
+    },
+    {
+        "mean_prediction": [
+            235.56651306152344,
+            254.706298828125
+        ],
+        "aleatoric_variance_predictions": [
+            6.633392810821533,
+            7.342836380004883
+        ],
+        "epistemic_variance_predictions": [
+            574.9552612304688,
+            1557.17578125
+        ],
+        "total_variance_predictions": [
+            581.588623046875,
+            1564.5186767578125
+        ],
+        "target": [
+            295.6961975097656,
+            268.7251281738281
+        ]
+    },
+    {
+        "mean_prediction": [
+            -62.49237060546875,
+            174.76181030273438
+        ],
+        "aleatoric_variance_predictions": [
+            2.892359495162964,
+            23.77699089050293
+        ],
+        "epistemic_variance_predictions": [
+            68720.5859375,
+            13289.01171875
+        ],
+        "total_variance_predictions": [
+            68723.4765625,
+            13312.7880859375
+        ],
+        "target": [
+            234.12046813964844,
+            69.14814758300781
+        ]
+    },
+    {
+        "mean_prediction": [
+            -247.78579711914062,
+            420.9744567871094
+        ],
+        "aleatoric_variance_predictions": [
+            5.884238243103027,
+            4.713813304901123
+        ],
+        "epistemic_variance_predictions": [
+            108766.75,
+            10376.83984375
+        ],
+        "total_variance_predictions": [
+            108772.6328125,
+            10381.5537109375
+        ],
+        "target": [
+            103.02978515625,
+            288.555908203125
+        ]
+    },
+    {
+        "mean_prediction": [
+            76.44610595703125,
+            130.13467407226562
+        ],
+        "aleatoric_variance_predictions": [
+            16.657758712768555,
+            17.425209045410156
+        ],
+        "epistemic_variance_predictions": [
+            3986.798095703125,
+            370.01068115234375
+        ],
+        "total_variance_predictions": [
+            4003.4560546875,
+            387.4359130859375
+        ],
+        "target": [
+            128.94143676757812,
+            111.28367614746094
+        ]
+    },
+    {
+        "mean_prediction": [
+            206.31068420410156,
+            -62.82752990722656
+        ],
+        "aleatoric_variance_predictions": [
+            13.336028099060059,
+            21.921857833862305
+        ],
+        "epistemic_variance_predictions": [
+            4485.59521484375,
+            19219.109375
+        ],
+        "total_variance_predictions": [
+            4498.93115234375,
+            19241.029296875
+        ],
+        "target": [
+            297.5484619140625,
+            105.8291244506836
+        ]
+    },
+    {
+        "mean_prediction": [
+            -172.67172241210938,
+            279.18115234375
+        ],
+        "aleatoric_variance_predictions": [
+            1.2478697299957275,
+            1.3653247356414795
+        ],
+        "epistemic_variance_predictions": [
+            55528.84765625,
+            5108.40625
+        ],
+        "total_variance_predictions": [
+            55530.09375,
+            5109.77197265625
+        ],
+        "target": [
+            160.19497680664062,
+            123.95147705078125
+        ]
+    },
+    {
+        "mean_prediction": [
+            144.42410278320312,
+            381.04168701171875
+        ],
+        "aleatoric_variance_predictions": [
+            10.243934631347656,
+            2.2548487186431885
+        ],
+        "epistemic_variance_predictions": [
+            8359.890625,
+            604.5732421875
+        ],
+        "total_variance_predictions": [
+            8370.134765625,
+            606.828125
+        ],
+        "target": [
+            360.7325439453125,
+            251.93014526367188
+        ]
+    },
+    {
+        "mean_prediction": [
+            3.939727783203125,
+            268.000732421875
+        ],
+        "aleatoric_variance_predictions": [
+            12.728253364562988,
+            3.533015012741089
+        ],
+        "epistemic_variance_predictions": [
+            8041.1474609375,
+            3002.942138671875
+        ],
+        "total_variance_predictions": [
+            8053.87548828125,
+            3006.47509765625
+        ],
+        "target": [
+            293.4911804199219,
+            212.7366943359375
+        ]
+    },
+    {
+        "mean_prediction": [
+            134.20260620117188,
+            223.87686157226562
+        ],
+        "aleatoric_variance_predictions": [
+            15.51147747039795,
+            4.0518388748168945
+        ],
+        "epistemic_variance_predictions": [
+            267.5395812988281,
+            755.020751953125
+        ],
+        "total_variance_predictions": [
+            283.05108642578125,
+            759.0725708007812
+        ],
+        "target": [
+            121.01019287109375,
+            182.887451171875
+        ]
+    },
+    {
+        "mean_prediction": [
+            394.9434509277344,
+            204.23883056640625
+        ],
+        "aleatoric_variance_predictions": [
+            3.473862886428833,
+            4.899838924407959
+        ],
+        "epistemic_variance_predictions": [
+            5926.3896484375,
+            3034.995849609375
+        ],
+        "total_variance_predictions": [
+            5929.86376953125,
+            3039.895751953125
+        ],
+        "target": [
+            230.3336944580078,
+            291.94134521484375
+        ]
+    }
+]

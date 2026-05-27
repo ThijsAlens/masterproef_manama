@@ -16,15 +16,19 @@ class MC_Dropout(torch.nn.Module):
 
         self.model = model.to(self.device)
         self.n_samples = n_samples
-    def predict(self, x):
+    def predict(self, x: torch.Tensor, split_variances: bool = False) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         """
         Predict the output for the given input using Monte Carlo Dropout.
         
         Args:
             x (torch.Tensor): Input tensor.
-            
+            split_variances (bool): Whether to return separate aleatoric and epistemic uncertainties.
+        
         Returns:
-            tuple[torch.Tensor, torch.Tensor]: The ensemble prediction and uncertainty (mean and variance of the predictions from the individual models).
+            if split_variances is False:
+                tuple[torch.Tensor, torch.Tensor]: The ensemble prediction and total uncertainty (mean and variance of the predictions from the individual models).
+            if split_variances is True:
+                tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor, torch.Tensor]]: The ensemble prediction and separate aleatoric and epistemic uncertainties.
         """
         x = x.to(self.device)
         self.model.train()  # Set the model to training mode to enable dropout during inference
@@ -43,22 +47,27 @@ class MC_Dropout(torch.nn.Module):
             ensemble_mean = means.mean(dim=0)
             
             # Ensemble Variance calculation (total uncertainty = aleatoric + epistemic)
-            ensemble_var = (vars_ + means**2).mean(dim=0) - ensemble_mean**2
+            aleatoric_var = vars_.mean(dim=0)
+            epistemic_var = torch.var(means, dim=0, unbiased=False)
+            ensemble_var = aleatoric_var + epistemic_var
 
-            return ensemble_mean, ensemble_var
+            if split_variances:
+                return ensemble_mean, (ensemble_var, aleatoric_var, epistemic_var)
+            else:
+                return ensemble_mean, ensemble_var
 
 class SimpleCNNRegressionModelDropout(torch.nn.Module):
     """
     A simple convolutional network for regression tasks. Dropout layers are included between all convolutional layers.
     
     Args:
-        input_size (int): The number of input features.
-        hidden_size (list[int]): The number of hidden units in the hidden layer. Default is [16].
+        input_dims (tuple[int, int, int]): The dimensions of the input tensor (channels, height, width).
+        hidden_channels (list[int]): The number of channels in the hidden convolutional layers. Default is [16].
         output_size (int): The number of output features.
         p_list (list[float]): The dropout probabilities to be applied after each convolutional layer. Default is [0.5].
     """
     
-    def __init__(self, input_channels: int = 3, hidden_channels: list[int] = [16], output_size: int = 2, p_list: list[float] = [0.5]):
+    def __init__(self, input_dims: tuple[int, int, int] = (3, 370, 250), hidden_channels: list[int] = [16], output_size: int = 2, p_list: list[float] = [0.5]):
         super(SimpleCNNRegressionModelDropout, self).__init__()
 
         if len(p_list) != len(hidden_channels):
@@ -66,7 +75,7 @@ class SimpleCNNRegressionModelDropout(torch.nn.Module):
 
         # Convolutional Layers (with ReLU and MaxPool and Dropout)
         self.conv_layers = []
-        current_channels = input_channels
+        current_channels = input_dims[0]
         for i, h_channels in enumerate(hidden_channels):
             self.conv_layers.append(torch.nn.Conv2d(current_channels, h_channels, kernel_size=3, padding=1))
             self.conv_layers.append(torch.nn.ReLU())
@@ -76,7 +85,7 @@ class SimpleCNNRegressionModelDropout(torch.nn.Module):
         self.conv_layers = torch.nn.Sequential(*self.conv_layers)
 
         # Flatten the output of the convolutional layers to feed into the fully connected layer
-        dummy_input = torch.zeros(1, input_channels, config.INPUT_DIMENSION[1], config.INPUT_DIMENSION[2])
+        dummy_input = torch.zeros(1, input_dims[0], input_dims[1], input_dims[2])
         dummy_output = self.conv_layers(dummy_input)
         flattened_size = dummy_output.view(1, -1).size(1)
         

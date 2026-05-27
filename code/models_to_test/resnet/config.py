@@ -1,4 +1,4 @@
-# Val loss = 
+# Val loss = -2.1134
 SEED = 1
 
 PATH_TO_TRAIN_DATA_DIR = "data/regression_use/train"
@@ -14,7 +14,7 @@ MODEL_PARAMETERS = {
     "output_size": 2, # (x, y)
     "freeze_backbone": True
 }
-NUMBER_OF_RES_BLOCKS = 4                # 8 (total number of blocks is 8)
+NUMBER_OF_RES_BLOCKS = 4                # (total number of blocks is 8)
 
 OUTPUT_BOUNDS = {
     "x_mean": 231.21374610473245,
@@ -23,10 +23,10 @@ OUTPUT_BOUNDS = {
     "y_std": 94.59512251991019
 }
 
-INCLUDE_DEPTH = False                   # False
+INCLUDE_DEPTH = False
 
-NUM_MODELS = 5                          # 3
-EPOCHS = 100                            # 100
-LR = 1e-4                               # 1e-5
-BATCH_SIZE = 32                         # 32
-BAGGING_SAMPLE_RATIO = 1.0              # 0.8
+NUM_MODELS = 5
+EPOCHS = 100
+LR = 1e-4
+BATCH_SIZE = 32
+BAGGING_SAMPLE_RATIO = 0.8

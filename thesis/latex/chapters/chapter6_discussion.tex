@@ -1,6 +1,41 @@
 % !TeX root = thesis.tex
 
-\chapter{Discussion}\label{ch:discussion}
+\chapter{Discussion}
+The experiments done in \cref{ch:experiments_section:evaluating-on-a-test-set} and \cref{ch:experiments_section:evaluating-on-out-of-distribution-data} show how the models trained in \cref{ch:models-for-uncertainty-aware-object-detection} perform under real-world conditions.
+In this chapter we will discuss the results of these experiments and what they mean for our use case.
+We will also discuss the limitations of our experiments and trained models and how they can be improved in the future.
 
-\section{}
+\section{General remarks}
+The experiments done should all be taken with a grain of salt, as they are all done on models trained on a single dataset, which is not very large.
+This means that the results we see might not be generalizable to other datasets or real-world scenarios.
+The dataset we used is also quite specific, as it only contains images of a single object which is quite easy to detect, and thus the results might not be applicable to other objects or scenarios where the object is more difficult to detect.
+While we tested a variety of models with different hyperparameters, we definitely did not test everything, and thus there might be better models out there that we did not test.
+The test sets we used are very small, which make our results give an idea of how the models perform, but no definitive conclusion on how the models perform in general can be drawn from these results.
 
+\section{Deep Ensembles}
+The Deep Ensemble model is the only model that is truely capable of doing what is asked of it.
+It outputs an accurate prediction of the center of the object (mean prediction), as well as an confident uncertainty score (variance prediction) when the conditions allow for safe operatioin (\cref{ch:experiments_section:evaluating-on-a-test-set}).
+With that, it is also able to recognize when the conditions are not ideal, as it outputs a high uncertainty score along with a less accurate prediction of the center of the object (\cref{ch:experiments_section:evaluating-on-out-of-distribution-data}).
+The model has the occasional \gls{fp}, which is not ideal, as this can lead to unsafe situations.
+Its inference time, because of its small size, is quite low (15.18 ms,) which is a big advantage for real-time applications, such as a robot in a factory setting.
+
+\section{ResNet Ensembles}
+The ResNet Ensemble models have the issue that they are too ridged and do not really have the flexibility to adapt to our specific use case
+
+The architecture itself has proven to work~\cite{src:resnet}, however it needs quite a lot of data.
+Data we did not have, and thus we had to use pretrained weights on ImageNet, which came with its own capabilities and limitations.
+While these weights are very good for classification, they seemed to be less suited for regression.
+Therefore, we decided to only use the first few layers of the ResNet architecture, which are more focussed on general object detection features, and not the later layers, which are more focussed on classification.
+
+We found that when freezing the pretrained weights, and only training the last fully connected layer, the model was not capable of getting enough info for the variance prediction.
+But even when we allowed the pretrained weights to be updated during training, the model still struggled because of its size and the lack of data.
+The mean predictions however, were quite comparable to the other tested architectures, which proves even more that it is capable of detecting the objects and their centers.
+
+\section{\gls{mc} Dropout}
+The \gls{mc} Dropout model falls between the Deep Ensemble and ResNet Ensemble models.
+It is capable of learning to predict the center of the object, and is able to indicate when its predictions are uncertain.
+However, it is not as good at doing this as the Deep Ensemble model and thus struggles in our use case where there is not much room for error.
+
+The model's capabilities are mainly limited by the incompleteness of the model.
+It is trained to use all the network's weights to make its predictions, but because of the dropout, it can only use a subset of these weights during inference.
+Maybe lowering the dropout rate could help with this, but this would also limit the epistemic uncertainty estimation capabilities of the model as the forward passes becomes more similar to each other.

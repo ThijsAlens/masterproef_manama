@@ -212,4 +212,6 @@ thesis/latex/build/*
 thesis/latex/_minted-main
 code/robot_demonstrator
 code/data
+code/runs
 
+*.pth

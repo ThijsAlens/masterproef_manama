@@ -2,21 +2,20 @@
 
 \chapter{Literature study}\label{ch:literature-study}
 In this chapter, we discuss existing research relevant to uncertainty in \gls{ai} models and how it maps to real-world scenarios.
-First, we elaborate on what uncertainty is and the different ways it can sneak into \gls{ai} models.
+First, we elaborate on what uncertainty is and the different ways it can arise into \gls{ai} models.
 Next, we discuss how this uncertainty can be quantified.
-Finally, we explore existing methods to make \gls{ai} models uncertainty-aware and discuss how these concepts apply to a regression problem.
+Finally, we explore existing methods to make \gls{ai} models uncertainty-aware and discuss how these concepts apply to regression problems.
 
 \section{Uncertainty in AI} \label{ch:literature-study_section:uncertainty-in-ai}
-Many complex systems need to be modeled and understood.
-These systems can be modeled using \gls{ai} models, which offer a way to grasp their complexity and operate them as efficiently and safely as possible.
+To effectively understand and operate complex systems safely and efficiently, they are frequently modeled using \gls{ai}.
 However, like humans, these models are not perfect and can make mistakes.
 When using standard, non-uncertainty-aware \gls{ai} models, these mistakes are not communicated to the user.
-For example, when a \gls{cnn} is used to detect an object on a conveyor belt, it outputs the predicted class without indicating its certainty about the prediction.
-If the object is only partially visible, the lighting is poor, or the object closely resembles another, the model might be highly uncertain but will still output a class as if it were confident.
-All possible uncertainties regarding \glspl{dnn} can be categorized into two groups: aleatoric uncertainty and epistemic uncertainty~\cite{src:survey-uncertainty-dnn}~\cite{src:scalable-bayesian-deep-learning}.
+For example, when a \gls{cnn} is used to detect the center of an object on a conveyor belt, it outputs the predicted center coordinates without indicating its certainty about the prediction.
+If the object is only partially visible, the lighting is poor, or the object closely resembles another, the model might be highly uncertain but will still output a center as if it were confident.
+Within the context of \glspl{dnn}, uncertainty can be categorized into two groups: aleatoric uncertainty and epistemic uncertainty~\cite{src:survey-uncertainty-dnn}~\cite{src:scalable-bayesian-deep-learning}.
 
 \subsection{Aleatoric uncertainty}\label{ch:literature-study_section:uncertainty-in-ai_subsection:aleatoric-uncertainty}
-Aleatoric uncertainty is a type of uncertainty that arises from noise inherent in the data.
+Aleatoric uncertainty arises from noise inherent in the data.
 Its nature is irreducible, meaning this uncertainty will remain present regardless of how much data is gathered.
 
 \paragraph{Measurement errors}\label{ch:literature-study_section:uncertainty-in-ai_paragraph:measurement-errors}
@@ -24,24 +23,24 @@ When gathering data, mistakes can be made during the measuring process.
 These often stem from limitations of the measurement devices or imprecise data labeling.
 It is important to note that, if kept subtle, these mistakes can actually serve as a way to regularize a network.
 
-As an example, we consider a regression problem where a model predicts the $x$ and $y$ coordinates for the center of an object.
-The camera used for data capture might have a low resolution, and thus a lack of pixels which could cause an object to apear differently.
+As an example, we consider our regression problem where a model predicts the $x$ and $y$ coordinates for the center of an object.
+The camera used for data capture might have a low resolution (a lack of pixels), which could cause an object to appear differently.
 Furthermore, it could lead to inaccurate annotations; the center might be labeled as $(x_1, y_1)$ when it is actually $(x_1+\delta, y_1+\epsilon)$, with $\delta$ and $\epsilon$ representing small measurement errors.
 
 \subsection{Epistemic uncertainty}\label{ch:literature-study_section:uncertainty-in-ai_subsection:epistemic-uncertainty}
-Epistemic uncertainty originates from noise within the model or its training process.
+Epistemic uncertainty originates from a lack of knowledge within the model or its training process.
 This can stem from various causes, such as the model's architecture, the training procedure, or a lack of knowledge due to insufficient or irrelevant training data.
-In theory, its nature is reducible, meaning that gathering better data or using a better suited model architecture can decrease this uncertainty.
+In theory, its nature is reducible, meaning that gathering better data or using a better-suited model architecture can decrease this uncertainty.
 However, doing so in practice carries a significant computational cost, making it not always feasible to eliminate this uncertainty.
 
-\paragraph{Variability in real world situations} \label{ch:literature-study_section:uncertainty-in-ai_subsection:epistemic-uncertainty_paragraph:variability-in-real-world-situations}
+\paragraph{Variability in real-world situations} \label{ch:literature-study_section:uncertainty-in-ai_subsection:epistemic-uncertainty_paragraph:variability-in-real-world-situations}
 The real world changes constantly, creating diverse settings where objects may behave or look differently.
 Ideally, all potential situations should be sufficiently covered by the training set.
 If not, the network trained on this data cannot guarantee accurate outputs for new real-world situations.
 A distribution shift occurs when these real-world scenarios differ from the training data.
 These shifts are highly challenging for a \gls{dnn} to process, causing its performance to fluctuate significantly.
 
-Continuing with the regression problem of predicting an object's center.
+Continuing our regression problem of predicting an object's center.
 When a \gls{dnn} is trained on a dataset featuring optimal lighting and no occlusions, no other objects covering the view, etc., it will perform well in that specific setting.
 However, during actual inference, conditions might change unexpectedly, such as altered lighting, the appearance of new objects, etc.
 Because the dataset lacks examples of these new conditions, the trained \gls{dnn} fails to adapt, leading to a drop in performance.
@@ -49,9 +48,9 @@ Because the dataset lacks examples of these new conditions, the trained \gls{dnn
 \paragraph{Architecture specification errors} \label{ch:literature-study_section:uncertainty-in-ai_subsection:epistemic-uncertainty_paragraph:architecture-specification-errors}
 Network structures differ significantly, with each architecture having specific advantages and disadvantages regarding performance and prediction uncertainty.
 
-Suppose a factory requires the previously discussed regression model to meet their needs.
-Numerous model architectures are available, such as an \gls{mlp}, a \gls{cnn}, a U-net~\cite{src:u-net}, a \gls{gan}, or a YOLO network~\cite{src:yolo}, etc.
-Each model has its own configuration of layers, connections, and activation functions.
+Suppose a factory requires our previously discussed regression model to meet its needs.
+Numerous model architectures are available, such as an \gls{mlp}, a \gls{cnn}, a U-Net~\cite{src:u-net}, a \gls{gan}, or a YOLO network~\cite{src:yolo}, etc.
+Each model has its own configuration of layers, connections, and activation functions, etc.
 Consequently, all these networks will have their own capabilities and thus uncertainty for a given task.
 
 \paragraph{Training procedure errors} \label{ch:literature-study_section:uncertainty-in-ai_subsection:epistemic-uncertainty_paragraph:training-procedure-errors}
@@ -59,17 +58,17 @@ During model training, there are many decisions that need to be made.
 These include selecting the learning rate, the number of epochs, the data batching strategy, the optimizer, the weight initialization, etc.
 Each combination of these hyperparameters results in a different model with its own specific errors and uncertainty.
 
-For instance, the dataset for object center regression can be split into different batch sizes, ordered in various ways, etc.
-The chosen architecture can be trained using these diverse data handling methods, using different parameters to optimize it.
-This again leads to varying models that perform better in certain areas but poorly in others.
+For instance, the dataset for object center regression can be split into different batch sizes, shuffled in various ways, etc.
+The chosen architecture can be trained using these diverse data handling methods, all with different parameters to optimize it.
+Consequently, this results in varying models that perform better in certain areas but poorly in others.
 
-\paragraph{Errors by unknown data} \label{ch:literature-study_section:uncertainty-in-ai_subsection:epistemic-uncertainty_paragraph:errors-by-unknown-data}
+\paragraph{Errors from unknown data} \label{ch:literature-study_section:uncertainty-in-ai_subsection:epistemic-uncertainty_paragraph:errors-from-unknown-data}
 Once fully trained, the model may encounter entirely unprecedented situations during inference.
 Although unexpected within the original problem scope, the model must process these situations, resulting in high uncertainty.
 
 In the factory example, the model is trained for a specific environment and objective: detecting object centers in an industrial setting.
-If an unexpected object, such as a bird, enters the camera's viewpoint, the model will be highly uncertain because it has never seen one before.
-This occurs not because the environment was insufficiently tought to the model, but due to the completely unexpected nature of the bird being in the factory.
+If an unexpected object, such as a bird, enters the camera's \gls{fov}, the model will be highly uncertain because it has never seen one before.
+This occurs not because the environment was insufficiently represented in the training data, but due to the completely unexpected nature of the bird being in the factory.
 
 \subsection{Sources of uncertainty} \label{ch:literature-study_section:uncertainty-in-ai_subsection:sources-of-uncertainty}
 In our specific problem of object localization for robotic arm grasping, both aleatoric and epistemic uncertainties are present.
@@ -77,79 +76,70 @@ We would like to tackle both!
 
 First is the aleatoric uncertainty, inherent in the data, primarily caused by measurement errors.
 While we will attempt to minimize these errors, they will inevitably remain present in the dataset.
-However, as mentioned in \cref{ch:literature-study_section:uncertainty-in-ai_subsection:aleatoric-uncertainty}, these errors are not the primary concern; if kept subtle, they can act as a form of model regularization.
+We would however like to keep these errors as subtle as possible, to prevent them from causing significant issues for the model.
+As mentioned in \cref{ch:literature-study_section:uncertainty-in-ai_subsection:aleatoric-uncertainty}, these errors are not the primary concern; if kept subtle, they can act as a form of model regularization.
 
-One of the sources of aleatoric uncertainty are the errors introduced during the data collection and annotation process.
+A primary source of aleatoric uncertainty are the errors introduced during the data collection and annotation process.
 More concretely, when indicating the center of an object in the image, the annotator will not be able to perfectly identify the center, leading to small errors in the labels.
-Furthermore, the centers of the objects are most conveniently labeled in pixel-space, but the model should predict the centers in real-world-space, which requires a transformation that can introduce some errors as well.
+Furthermore, the centers of the objects are most conveniently labeled in pixel space, but the model should predict the centers using real-world coordinates, which requires a transformation that can introduce some errors as well.
 How to deal with the errors associated with the labeling process will be discussed further in \cref{ch:dataset_section:labeling}.
 
 Secondly, there is the epistemic uncertainty, which needs to be taken care of.
-This uncertainty is inherent to the model and its training process, and thus needs to be tackeled by the architecture and behavior of the model itself.
+This uncertainty is inherent to the model and its training process, and thus needs to be tackled by the architecture and behavior of the model itself.
 How this is precisely done will be discussed in \cref{ch:literature-study_section:uncertainty-aware-ai-models}.
 
 \section{Quantifying uncertainty} \label{ch:literature-study_section:quantifying-uncertainty}
-Models who can handle and quantify the uncertainties as described in~\ref{ch:introduction_section:positioning} are very sought-after in safety-critical applications like robot arm grasping.
+Models that can handle and quantify the uncertainties as described in~\cref{ch:introduction_section:positioning} are highly sought-after in safety-critical applications like robot arm grasping.
 For our problem, it is very important to know what factors can cause the model to be uncertain about its predictions and how to quantify this.
 When using a model in practice, we are interested in the uncertainty on the prediction of the model, also called predictive uncertainty.
-This is depended on two previously mentioned things: the uncertainty of the data (data uncertainty), which falls under the aleatoric uncertainty, and the uncertainty of the model (model uncertainty), which falls under the epistemic uncertainty~\cite{src:survey-uncertainty-dnn}.
+This is dependent on two previously mentioned things: the uncertainty of the data (data uncertainty), which falls under the aleatoric uncertainty, and the uncertainty of the model (model uncertainty), which falls under the epistemic uncertainty~\cite{src:survey-uncertainty-dnn}.
 
 \subsection{Aleatoric uncertainty} \label{ch:literature-study_section:quantifying-uncertainty_subsection:aleatoric-uncertainty}
 When we want to quantify the aleatoric uncertainty, we need to capture how mistakes can be made during the capturing and processing of the data.
-The conventional way of doing this is by using a well generalized model, which is trained on a large dataset.
-This makes the model learn the general distribution of the data.
-If the model is not well generalized, it learns the noisy data without real knowledge about the more general distribution of the data.
-\cref{fig:overfitting} shows an example of a model which is not well generalized, and thus captures the noise in the data.
-How we now quantify the aleatoric uncertainty is by looking at the loss of the model on the validation data. 
-If the model is well generalized, the loss on the validation data will be low, and thus the aleatoric uncertainty will be low as well.
-The exact opposite is true for a model which is not well generalized, as it will have a high loss on the validation data, and thus a high aleatoric uncertainty.
-However, these losses are very dependent on the loss function used during training, which is not ideal if we want to compare different models with different loss functions.
+This is however not really possible, as the captured data does not contain any information about the mistakes that were made during the capturing and processing of the data.
+If this information were available, we would not have any uncertainty, as we would know exactly how the data was captured and processed, and thus we would be able to correct for any mistakes made.
 
-\begin{figure}
-    \centering
-    \includegraphics[width=0.8\textwidth]{static/overfitting.png}
-    \caption{The blue line represents a model which is not well generalized, and thus captures the noise in the data. The red line represents a model which is well generalized, and thus captures the general distribution of the data.}
-    \label{fig:overfitting}
-\end{figure}
-
-A model can also be designed to directly predict the aleatoric uncertainty, as a second output, in addition to the main prediction.
-This requires a modification of the loss function to account for the uncertainty output.
-This is more complex to implement, but allows the model to directly learn the aleatoric uncertainty from the data.
-It is thus dependent on the data rather than the loss function, which is more ideal.
+There is however a way to indirectly capture the aleatoric uncertainty, by training a model which predicts this uncertainty as a second output, in addition to the main prediction.
+This requires a change in the interpretation of the output values and a modification of the loss function.
+This is relatively complex to implement, but allows the model to directly learn the aleatoric uncertainty from the data.
 How this is done in practice will be discussed in \cref{ch:models-for-uncertainty-aware-object-detection_section:training-evaluation}.
 
 \subsection{Epistemic uncertainty} \label{ch:literature-study_section:quantifying-uncertainty_subsection:epistemic-uncertainty}
 Quantifying epistemic uncertainty is a bit more complex to tackle, as it requires multiple models, hyperparameters, different usage of data etc. to be tested.
 There are different methods to account for this uncertainty, especially in theory.
-First of all, we can use a Bayesian approach to model the uncertainty of the model parameters (see~\ref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:bayesian-neural-networks}).
-This is a very principled way to model the uncertainty, as it needs an infinite amount of models to capture the uncertainty of the model parameters, which is not possible in practice. 
-However, its idea perfectly captures the way epistemic uncertainty establishes itself 
-Another way to model the uncertainty of the model parameters is by using an ensemble of models (see~\ref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:deep-ensemble-methods}).
+
+First of all, we can use a Bayesian approach to model the uncertainty of the model parameters (see~\cref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:bayesian-neural-networks}).
+This is a very principled way to model the uncertainty, as it needs an infinite number of models to capture the uncertainty of the model parameters, which is not possible in practice. 
+However, its idea perfectly captures the way epistemic uncertainty establishes itself.
+
+Another way to model the uncertainty of the model parameters is by using an ensemble of models (see~\cref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:deep-ensemble-methods}).
 This is a more practical way to model the uncertainty, as it is an approximation of the Bayesian approach, using a finite number of models to capture the uncertainty of the model parameters.
-A third way to model the uncertainty of the model parameters is by using dropout during inference (see~\ref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:monte-carlo-dropout}).
+
+A third way to model the uncertainty of the model parameters is by using dropout during inference (see~\cref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:monte-carlo-dropout}).
 \gls{mc} dropout, like the ensemble method, is more practical than the Bayesian approach.
 It keeps dropout turned on during inference, which allows it to capture the uncertainty of the model parameters by generating different outputs for the same input, which can then be combined to get a final output and uncertainty score.
 
 \section{Uncertainty-aware AI models} \label{ch:literature-study_section:uncertainty-aware-ai-models}
-``Conventional'' \gls{ai} models (\glspl{mlp}, \glspl{cnn}, \glspl{gan}, YOLO's~\cite{src:yolo}, etc.) are not designed to be uncertainty-aware, meaning they do not have a way to quantify the uncertainty of their predictions.
-This makes that new methods had to be developed to make \gls{ai} models uncertainty-aware.
-The ones we will be discussing, all have their foundation in the bayesian way of thinking, which is a very principled, mathematically-sound way to model uncertainty.
+``Conventional'' \gls{ai} models (\glspl{mlp}, \glspl{cnn}, \glspl{gan}, YOLOs~\cite{src:yolo}, etc.) are not designed to be uncertainty-aware, meaning they do not have a way to quantify the uncertainty of their predictions.
+This means that new methods had to be developed to make \gls{ai} models uncertainty-aware.
+The ones we will be discussing all have their foundation in the Bayesian way of thinking, which is a very principled, mathematically-sound way to model uncertainty.
 
 \subsection{Bayesian Neural Networks} \label{ch:literature-study_section:uncertainty-aware-ai-models_subsection:bayesian-neural-networks}
-A \gls{nn} is a function which maps an input $x \in X$ to an output $y \in Y$ using a model $f_{\theta}$, as shown in \cref{eq:nn}.
+A \gls{nn} is a function that maps an input $x \in X$ to an output $y \in Y$ using a model $f_{\theta}$, as shown in \cref{eq:nn}.
 \begin{equation}
     y = f_{\theta}(x)
     \label{eq:nn}
 \end{equation}
-In our case, the input vector $x$ is an image of an object, and the output vector $y$ is the predicted coordinates of the center of the object.
+In our case, the input $x$ is an image of an object, and the output $y$ represents the predicted coordinates of the center of the object.
 The parameters $\theta$ of the model are learned during the training phase, where the model is trained on a dataset consisting of input-output pairs.
 
-\paragraph{Aleatoric uncertainty}\cite{src:scalable-bayesian-deep-learning}
-For regression problems, the most conventional way to predict targets is to let the model directly predict the targets using \cref{eq:nn} directly.
-Its parameters $\theta$ are learned by minimizing a loss function (like the $L^2$ or $L^1$ loss) on the training data.
+\paragraph{Aleatoric uncertainty}
+For regression problems, the most conventional way to predict targets is to let the model directly predict the targets using \cref{eq:nn}.
+Its parameters $\theta$ are learned by minimizing a loss function (like the \gls{mse}, $L^2$ or $L^1$ loss) on the training data.
 However, this does not allow the model to capture the aleatoric uncertainty of the data, as it only predicts a single value for each target, without any indication of how certain it is about this prediction.
-Instead of predicting a single value for each target, the model can be designed to predict a distribution over the targets as showed by \cref{eq:prob-dist}.
-By asuming a Gaussian distribution for the targets, the model can be designed to predict the mean $\mu$ and variance $\sigma^2$ of the distribution, as shown in \cref{eq:nn-aleatoric-vec}.
+
+Instead of predicting a single value for each target, the model can be designed to predict a distribution over the targets as shown by \cref{eq:prob-dist}.
+By assuming a Gaussian distribution for the targets, the model can be designed to predict the mean $\mu$ and variance $\sigma^2$ of the distribution, as shown in \cref{eq:nn-aleatoric-vec}.
 
 \begin{subequations}
 \label{eq:nn-aleatoric}
@@ -162,11 +152,11 @@ By asuming a Gaussian distribution for the targets, the model can be designed to
 The variance $\sigma^2$ captures the aleatoric uncertainty of the data, while the mean $\mu$ captures the prediction of the model.
 The model can be trained by minimizing the negative log-likelihood of the data under the predicted distribution, as shown in \cref{eq:nn-aleatoric-loss}.
 \begin{equation}
-    min(-\sum_{i} \log(p(y_i|x_i, \theta)))
+    \min(-\sum_{i} \log(p(y_i|x_i, \theta)))
     \label{eq:nn-aleatoric-loss}
 \end{equation}
 
-\paragraph{Epistemic uncertainty}\cite{src:scalable-bayesian-deep-learning}\cite{src:bayesian-deep-learning-epistemic}
+\paragraph{Epistemic uncertainty}~\cite{src:scalable-bayesian-deep-learning, src:bayesian-deep-learning-epistemic}
 To capture the uncertainty in the model parameters $\theta$, we need the Bayesian approach, otherwise referred to as Bayesian inference.
 In the Bayesian approach, we place a prior distribution over the model parameters, which captures our beliefs about the parameters before seeing any data.
 Using the data, we can then compute the posterior distribution over the model parameters $\theta$ (given in \cref{eq:posterior-distr}), which captures our updated beliefs about the parameters after seeing the data.
@@ -177,8 +167,8 @@ Using the data, we can then compute the posterior distribution over the model pa
 \end{equation}
 
 $p(\theta)$ is the prior distribution over the model parameters, which can be chosen based on our beliefs about the parameters.
-When there are no prior beliefs of the model's parameters, its most commenly chosen to use a Gaussian distribution.
-However, its choise can be a way to regulize the model~\cite{src:lecture-notes-bayesian-learning}:
+When there are no prior beliefs of the model's parameters, it is most commonly chosen to use a Gaussian distribution.
+However, its choice can be a way to regularize the model~\cite{src:lecture-notes-bayesian-learning}:
 
 \begin{itemize}
     \item $L^2$ regularization is equivalent to using a Gaussian prior.
@@ -186,7 +176,7 @@ However, its choise can be a way to regulize the model~\cite{src:lecture-notes-b
 \end{itemize}
 
 $p(Y|X, \theta)$ is the likelihood of the data given the model parameters, which captures how well the model fits the data.
-This is calculated by passing the whole dataset through the model with a softmax output layer and calculating the probability of the data under the predicted distribution.
+For a regression task, this is calculated by passing the dataset through the model to output the parameters of a continuous distribution (such as the mean and variance) and calculating the probability density of the data under this predicted distribution.
 
 $p(Y|X)$ is the evidence, which is a normalizing constant that ensures that the posterior distribution is a valid probability distribution.
 It is calculated by integrating the likelihood over all possible values of the model parameters, as shown in \cref{eq:evidence}.
@@ -197,63 +187,85 @@ It is calculated by integrating the likelihood over all possible values of the m
 \end{equation}
 
 However, computing the evidence is not feasible in practice, as it requires integrating over all possible values of the model parameters, of which a \gls{dnn} has many.
-As by consequence, the posterior distribution is also not feasible to compute, as it requires computing the evidence.
+As a consequence, the posterior distribution is also not feasible to compute, as it requires computing the evidence.
 This is why we need to use approximations to compute the posterior distribution.
 
 \subsection{Deep Ensemble Methods} \label{ch:literature-study_section:uncertainty-aware-ai-models_subsection:deep-ensemble-methods}
-A deep ensemble method~\cite{src:deep-ensemble-methods} rests on the idea that a combination of (simpler) models can be trained and perform better then a single (complex) model.
+A deep ensemble method~\cite{src:deep-ensemble-methods} rests on the idea that a combination of (simpler) models can be trained and perform better than a single (complex) model.
 Not only that, but it also outputs a great uncertainty score about its predictions.
-A typical ensemble method uses multiple decision trees as their models, a deep ensemble method uses, as the name suggests, uses \glspl{dnn} as its models.
+A typical ensemble method uses multiple decision trees as its base models, a deep ensemble method, as the name suggests, uses \glspl{dnn} as its models.
 Creating a deep ensemble method contains 3 main steps:
 \begin{itemize}
-    \item A proper scoring rule, which is used as a way to train the models in the ensemble.
+    \item A proper scoring rule, which is used as a way to train and evaluate the models in the ensemble.
     \item Adversarial training, which is used to make the models in the ensemble more robust.
     \item The actual ensembling, which combines the outputs of the different models to create a final output and uncertainty score.
 \end{itemize}
+
 \paragraph{The scoring rule}
 A scoring rule is a way to measure the quality of a model's probabilistic predictions.
 It should encourage the model to generate outputs which are accurate and are capable of telling when it is uncertain about its output.
-To make this a bit more concrete, lets take our use case of predicting the center of an object:
+To make this a bit more concrete, let's take our use case of predicting the center of an object:
 \begin{itemize}
-    \item A great scoring rule should punish the model hard if it predicts coordinates with a low uncertainty, when in fact the groud truth states the center is somewhere else completly.
+    \item A great scoring rule should penalize the model if it predicts coordinates with a low uncertainty, when in fact the ground truth states the center is somewhere else completely.
     \item The model should be encouraged to predict coordinates with a high uncertainty if these coordinates are far from the ground truth.
     \item If the model predicts coordinates which are close to the ground truth with a high uncertainty, it should be punished.
     \item When the model predicts coordinates which are close to the ground truth with a low uncertainty, it should be rewarded.
 \end{itemize}
 
-For regression problems, we can addapt the negative log-likelihood loss function to be a proper scoring rule for our two-part output (see \cref{ch:models-for-uncertainty-aware-object-detection_section:training-evaluation}).
+For regression problems, we can adapt the negative log-likelihood loss function to be a proper scoring rule for our two-part output (see \cref{ch:models-for-uncertainty-aware-object-detection_section:training-evaluation}).
 
 \paragraph{Adversarial training}
-Adversarial training is a technique which is used to make \glspl{nn} more robust against small changes which can drastically change the output of the model.
+Adversarial training is a technique which is used to make \glspl{nn} more robust against small perturbations which can drastically change the output of the model.
 An adversarial example is a modified version of an input image that is designed to fool the model into making a mistake.
-Take our case as an example, when coordinates of an object are predicted with a high probability, it could be that with a very small change to the image, the network all of a sudden thinks it is somewhere completely different with high confidence.
-This is something we want to avoid at all cost, since this big swing eliminates any notion of uncertainty the model could have had.
+Take our case as an example: when coordinates of an object are predicted with a high probability, it could be that with a very small change to the image, the network all of a sudden thinks it is somewhere completely different with high confidence.
+This is something we want to avoid at all costs, since this big swing eliminates any notion of uncertainty the model could have had.
 
 Adversarial training tries to fix these big swings by generating these adversarial examples during training and adding them to the training set.
 Further following the example, an adversarial example is generated from a correctly predicted input image and added to the training set with the same label as the original image.
 By doing this, the model learns to be more robust against these small changes, and the big swings in output are reduced.
 
-\paragraph{Ensembling}
+\paragraph{Ensembling}\label{ch:literature-study_section:uncertainty-aware-ai-models_subsection:deep-ensemble-methods_paragraph:ensembling}
 The final step in creating a deep ensemble method is the actual ensembling.
 The paper~\cite{src:deep-ensemble-methods} suggests to create an ensemble of 5 \glspl{dnn} to predict an output with an uncertainty score.
 Each model in the ensemble should be trained independently, however this does not mean they should be different model architectures.
-In fact, when randomly initializing the \gls{nn} parameters, along with shuffeling the training data, the networks where different enough to obtain good results.
-This makes that no methods like bagging or boosting are needed to create diversity in the ensemble.
-Which means all the training data can be used for the training of the models in the ensemble, which is benefitial for the \glspl{dnn} which need more data to train properly.
+In fact, when randomly initializing the \gls{nn} parameters, along with shuffling the training data, the networks were different enough to obtain good results.
+This means that no methods like bagging or boosting are needed to create diversity in the ensemble and all the training data can be used for the training of the models in the ensemble.
+This is beneficial for the \glspl{dnn} which need more data to train properly.
 
 To get the final output and uncertainty score, the outputs of the different models are combined.
-Each model in the ensemble outputs a probability distribution over the different classes.
-These probability distributions are then averaged to get the final output distribution.
-The label with the highest probability in this final distribution is taken as the final output with the uncertainty belonging to it.
-Lets continue the example of classifying images of disks and cubes to make this more concrete.
-Assuming we have an ensemble of 3 models, and they output the following probability distributions for a given input image:
-\begin{itemize}
-    \item Model 1: [0.7 (disk), 0.3 (cube)]
-    \item Model 2: [0.4 (disk), 0.6 (cube)]
-    \item Model 3: [0.9 (disk), 0.1 (cube)]
-\end{itemize}
-Averaging these distributions results in the final output distribution: [0.67 (disk), 0.33 (cube)].
-The final output is thus 'disk' with an uncertainty score of 0.67.
+Each model in the ensemble outputs a probability distribution (mean and variance) over the different targets.
+The final output distribution is then obtained by treating the ensemble as a uniformly weighted Gaussian mixture.
+To produce a single, tractable output, this mixture is approximated as a single Gaussian distribution via moment matching.
+Mathematically, this can be expressed as shown in \cref{eq:ensemble-output}, where $\bm{\mu}_{\theta, ens}(\mathbf{x})$ and $\bm{\sigma}^2_{\theta, ens}(\mathbf{x})$ are the mean and variance of the final output distribution, and $\bm{\mu}_{\theta_m}(\mathbf{x})$ and $\bm{\sigma}^2_{\theta_m}(\mathbf{x})$ are the mean and variance of the output distribution of the $m$-th model in the ensemble.
+
+\begin{equation}\label{eq:ensemble-output}
+    \begin{aligned}
+        \bm{\mu}_{\theta, ens}(\mathbf{x}) &= \frac{1}{M} \sum_{m=1}^{M} \bm{\mu}_{\theta_m}(\mathbf{x}) \\
+        \bm{\sigma}^2_{\theta, ens}(\mathbf{x}) &= \frac{1}{M} \sum_{m=1}^{M} \bm{\sigma}^2_{\theta_m}(\mathbf{x}) + \frac{1}{M} \sum_{m=1}^{M} (\bm{\mu}_{\theta_m}(\mathbf{x}) - \bm{\mu}_{\theta, ens}(\mathbf{x}))^2
+    \end{aligned}
+\end{equation}
+
+Note that the variance of the final output distribution is not just the average of the variances of the different models.
+It sums the mean aleatoric uncertainty predictions of the different models to get the total aleatoric uncertainty, and adds the variance of the mean predictions of the different models, which captures the epistemic uncertainty of the ensemble.
+
+Let's apply this to our regression problem of predicting the center of an object.
+Assuming we have an ensemble of 3 models (to keep the example simple), and they output probability distributions for a given input image given in \cref{tab:ensemble-output}.
+
+\begin{table}[]
+    \centering
+    \begin{tabular}{c|c|c}
+        \textbf{Model index} & \textbf{x-coordinate distribution ($\mu, \sigma^2$)} & \textbf{y-coordinate distribution ($\mu, \sigma^2$)} \\
+        \hline
+        1 & $\mathcal{N}(5, 2)$ & $\mathcal{N}(7, 5)$ \\
+        2 & $\mathcal{N}(3, 4)$ & $\mathcal{N}(6, 2)$ \\
+        3 & $\mathcal{N}(4, 1)$ & $\mathcal{N}(8, 6)$ \\
+    \end{tabular}
+    \caption{An example of output distributions of 3 different models in an ensemble for a given input image.}
+    \label{tab:ensemble-output}
+\end{table}
+
+Combining these distributions results in the final output distribution: $\mathcal{N}(4, 3)$ for the x-coordinate and $\mathcal{N}(7, 5)$ for the y-coordinate.
+
 \subsection{Monte Carlo dropout} \label{ch:literature-study_section:uncertainty-aware-ai-models_subsection:monte-carlo-dropout}
 Dropout is a regularization technique commonly used in the training of \glspl{nn} to prevent overfitting.
 The idea is to randomly drop some neurons in the network during the training phase.
@@ -264,13 +276,7 @@ When the model is fully trained and ready for inference, dropout is usually turn
 Every time a set of neurons is dropped, the network changes a bit, which can result in different outputs for the same input.
 Each alteration of the network can be seen as a different model in an ensemble.
 By letting the model make multiple forward passes with dropout turned on, we can gather a set of different outputs for the same input with their own predicted probability distributions.
-These outputs can then be combined in a similar way as the deep ensemble method in~\cref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:deep-ensemble-methods} to get a final output and uncertainty score.
+These outputs can then be combined in a similar way to the deep ensemble method in~\cref{ch:literature-study_section:uncertainty-aware-ai-models_subsection:deep-ensemble-methods} to get a final output and uncertainty score.
 
-Reusing the example of classifying images of disks and cubes, assuming we make 3 forward passes with \gls{mc} dropout, we could get the following outputs:
-\begin{itemize}
-    \item Forward pass 1: [0.8 (disk), 0.2 (cube)]
-    \item Forward pass 2: [0.5 (disk), 0.5 (cube)]
-    \item Forward pass 3: [0.6 (disk), 0.4 (cube)]
-\end{itemize}
-Averaging these distributions results in the final output distribution: [0.63 (disk), 0.37 (cube)].
-The final output is thus 'disk' with an uncertainty score of 0.63.
+The example of \cref{tab:ensemble-output} can be applied here as well, but instead of having three different models in the ensemble, we have three different forward passes with dropout turned on, which results in three different outputs for the same input image.
+These are then again combined to get the final output distribution.

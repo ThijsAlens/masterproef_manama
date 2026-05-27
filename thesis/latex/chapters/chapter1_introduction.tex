@@ -20,7 +20,7 @@ The use of \gls{ai} thus not only brings greater efficiency and quality gains bu
 
 These real-world scenarios require \gls{ai} systems to be highly robust and reliable.
 However, \gls{ai} systems often struggle when faced with new or unknown situations, leading to unreliable predictions.
-Therefore, systems should be able to express uncertainty about their predictions.
+Therefore, these systems must be able to quantify and express uncertainty about their predictions.
 This capability enables safety mechanisms to prevent the robot from taking actions based on uncertain predictions.
 Uncertainty-aware \gls{ai} models achieve this by outputting both a prediction and a corresponding uncertainty score.
 
@@ -38,12 +38,12 @@ These differences can include varying lighting conditions due to shadows or refl
 Other unexpected events, such as a human operator placing the wrong object or the sudden movement of an already placed object, can also disrupt the \gls{ai} system.
 
 \section{Objectives} \label{ch:introduction_section:objectives}
-This thesis aims to adress these issues by developing and evaluating uncertainty-aware regression models which infer the center ($x$ and $y$ coordinates) of an object. 
+This thesis aims to address these issues by developing and evaluating uncertainty-aware regression models which infer the center ($x$ and $y$ coordinates) of an object. 
 This so a robot arm can grasp them, if the uncertainty is low, otherwise avoid taking actions to keep the environment safe. 
 Our focus is on making these models work in challenging real-world conditions.
 
 The primary research question is:
-How can we develop uncertainty-aware object localization models for a robot arm, that can effectively identify and communicate uncertainty in their predictions, particularly in challenging real-world conditions?
+How can we develop uncertainty-aware object localization models for a robot arm that can effectively identify and communicate uncertainty in their predictions, particularly in challenging real-world conditions?
 
 This overarching question is further explored through the following sub-questions:
 \begin{itemize}
@@ -53,8 +53,7 @@ This overarching question is further explored through the following sub-question
 
 To address these questions, the following objectives are set:
 \begin{itemize}
-    \item Conduct a comprehensive literature review on uncertainty and existing uncertainty-aware models with an emphesis on object localization.
-    \item Create a dataset where the center of an object ($x$ and $y$ coordinate) is annotated. This in both normal and challenging real-world conditions.
+    \item Conduct a comprehensive literature review on uncertainty and existing uncertainty-aware models with an emphasis on object localization.
+    \item Create a dataset where the center of an object ($x$ and $y$ coordinate) is annotated both in normal and challenging real-world conditions.
     \item Develop, implement and evaluate uncertainty-aware models to predict the center of an object along with an uncertainty score.
-    \item Design and implement safety mechanisms that utilize the uncertainty information to prevent the robot from taking actions based on uncertain predictions.
 \end{itemize}

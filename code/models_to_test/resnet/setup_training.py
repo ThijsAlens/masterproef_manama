@@ -33,7 +33,7 @@ def set_seed(seed: int = 1) -> None:
     torch.backends.cudnn.benchmark = False
     return
 
-def training_step(model: torch.nn.Module, images: torch.Tensor, targets: torch.Tensor, loss_fn: torch.nn.Module, optimizer: torch.optim.Optimizer, writer: SummaryWriter, epoch: int) -> float:
+def training_step(model: torch.nn.Module, images: torch.Tensor, targets: torch.Tensor, loss_fn: torch.nn.Module, optimizer: torch.optim.Optimizer) -> float:
     """
     Perform a single training step for the given model, including adversarial training.
     
@@ -43,8 +43,6 @@ def training_step(model: torch.nn.Module, images: torch.Tensor, targets: torch.T
         targets (torch.Tensor): The target values for the training step.
         loss_fn (torch.nn.Module): The loss function to compute the training loss.
         optimizer (torch.optim.Optimizer): The optimizer to update the model parameters.
-        writer (SummaryWriter): The TensorBoard writer to log training metrics.
-        epoch (int): The current epoch number for logging purposes.
         
     Returns:
         float: The computed training loss for this step.
@@ -75,10 +73,9 @@ def training_step(model: torch.nn.Module, images: torch.Tensor, targets: torch.T
     total_loss.backward()
     optimizer.step()
     
-    writer.add_scalar(f"NLL_Loss/Train", total_loss.item(), epoch)
     return total_loss.item()
 
-def validation_step(model: torch.nn.Module, images: torch.Tensor, targets: torch.Tensor, loss_fn: torch.nn.Module, writer: SummaryWriter, epoch: int) -> float:
+def validation_step(model: torch.nn.Module, images: torch.Tensor, targets: torch.Tensor, loss_fn: torch.nn.Module) -> float:
     """
     Perform a single validation step for the given model.
     
@@ -87,8 +84,6 @@ def validation_step(model: torch.nn.Module, images: torch.Tensor, targets: torch
         images (torch.Tensor): The input images for the validation step.
         targets (torch.Tensor): The target values for the validation step.
         loss_fn (torch.nn.Module): The loss function to compute the validation loss.
-        writer (SummaryWriter): The TensorBoard writer to log validation metrics.
-        epoch (int): The current epoch number for logging purposes.
 
     Returns:
         float: The computed validation loss for this step.
@@ -97,10 +92,9 @@ def validation_step(model: torch.nn.Module, images: torch.Tensor, targets: torch
     with torch.no_grad():
         mean_pred, var_pred = model(images)
         val_loss = loss_fn(mean_pred, var_pred, targets)
-        writer.add_scalar(f"NLL_Loss/Val", val_loss.item(), epoch)
     return val_loss.item()
 
-def train_ensemble_bagging(num_models: int=5, training_dataset: DataLoader=None, validation_dataset: DataLoader=None, model_parameters: dict[str, any]=None, epochs: int=10, lr:int=1e-3, batch_size: int=32, sample_ratio: float=1.0) -> DeepEnsemble:
+def train_ensemble_bagging(num_models: int=5, training_dataset: DataLoader=None, validation_dataset: DataLoader=None, model_parameters: dict[str, any]=None, epochs: int=10, lr:int=1e-3, batch_size: int=32, bagging_ratio: float=None) -> DeepEnsemble:
     """
     Train a deep ensemble using bagging (bootstrap aggregating).
     
@@ -112,16 +106,25 @@ def train_ensemble_bagging(num_models: int=5, training_dataset: DataLoader=None,
         epochs (int): The number of training epochs for each model.
         lr (float): The learning rate for training each model.
         batch_size (int): The batch size for training and validation.
-        sample_ratio (float): The ratio of the dataset to sample for each model (between 0 and 1).
+        bagging_ratio (float): The ratio of the dataset to sample for each model (between 0 and 1). If None, the entire dataset is used for each model (no bagging).
     
     Returns:
         DeepEnsemble: A trained deep ensemble model.
     """
-    if model_parameters is None:
-        raise ValueError("model_parameters must be provided to initialize the models in the ensemble.")
-    
+    if num_models <= 0:
+        raise ValueError("num_models must be a positive integer.")
     if training_dataset is None or validation_dataset is None:
         raise ValueError("training_dataset and validation_dataset must be provided to train the models in the ensemble.")
+    if model_parameters is None:
+        raise ValueError("model_parameters must be provided to initialize the models in the ensemble.")
+    if epochs <= 0:
+        raise ValueError("epochs must be a positive integer.")
+    if lr <= 0:
+        raise ValueError("lr must be a positive float.")
+    if batch_size <= 0:
+        raise ValueError("batch_size must be a positive integer.")
+    if bagging_ratio is not None and (bagging_ratio <= 0 or bagging_ratio > 1):
+        raise ValueError("bagging_ratio must be between 0 and 1 or None.")
     
     ensemble_models = []
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -132,36 +135,58 @@ def train_ensemble_bagging(num_models: int=5, training_dataset: DataLoader=None,
         run_name = f"resnet_model_{i}_{timestamp}"
         writer = SummaryWriter(log_dir=f"runs/{run_name}")
         
+        # Initialize model, optimizer, scheduler, and loss function
         model = ResNetRegressionModel(**model_parameters).to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10)
         loss_fn = GaussianNLLLoss()
         
-        # Bagging indices
-        indices = torch.randint(0, len(training_dataset), (len(training_dataset),)).tolist()
+        # Bagging
+        if bagging_ratio is None:
+            indices = list(range(len(training_dataset)))
+        else:
+            bag_size = int(len(training_dataset) * bagging_ratio)
+            indices = torch.randint(0, len(training_dataset), (bag_size,)).tolist()
         train_loader = DataLoader(Subset(training_dataset, indices), batch_size=batch_size, shuffle=True)
-
-        best_val_loss = float('inf')
+        
+        # Variables to keep track of the best model based on validation loss
+        best_avg_val_loss = float('inf')
         best_model_wts = None
 
         print(f"Training Model {i}...")
         for epoch in tqdm(range(epochs)):
+            # Train
+            total_train_loss = 0.0
+            num_train_batches = 0
             for images, targets in train_loader:
                 images, targets = images.to(device), targets.to(device)
-                training_step(model, images, targets, loss_fn, optimizer, writer, epoch)
-            
-            v_images, v_targets = next(iter(validation_dataset))
-            val_loss = validation_step(model, v_images.to(device), v_targets.to(device), loss_fn, writer, epoch)
-            scheduler.step(val_loss)
+                batch_training_loss = training_step(model, images, targets, loss_fn, optimizer)
+                total_train_loss += batch_training_loss
+                num_train_batches += 1
+            avg_train_loss = total_train_loss / num_train_batches
+            writer.add_scalar(f"NLL_Loss/Train_Epoch", avg_train_loss, epoch)
 
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                best_epoch = epoch
+            # Validate
+            total_val_loss = 0.0
+            num_val_batches = 0
+            for images, targets in validation_dataset:
+                images, targets = images.to(device), targets.to(device)
+                batch_val_loss = validation_step(model, images, targets, loss_fn)
+                total_val_loss += batch_val_loss
+                num_val_batches += 1
+            avg_val_loss = total_val_loss / num_val_batches
+            writer.add_scalar(f"NLL_Loss/Validation", avg_val_loss, epoch)
+            scheduler.step(avg_val_loss)
+
+            # Keep track of the best model based on validation loss
+            if avg_val_loss < best_avg_val_loss:
+                best_avg_val_loss = avg_val_loss
                 best_model_wts = copy.deepcopy(model.state_dict())
         
+        # Save the best model for this ensemble member
         if best_model_wts is not None:
             model.load_state_dict(best_model_wts)
-            print(f"Model {i} - on epoch {best_epoch} - validation loss: {best_val_loss:.4f}")
+            print(f"Model {i} - validation loss: {best_avg_val_loss:.4f}")
             os.makedirs(config.PATH_TO_SAVE_MODEL_DIR, exist_ok=True)
             save_path = os.path.join(config.PATH_TO_SAVE_MODEL_DIR, f"{run_name}.pth")
             torch.save(model.state_dict(), save_path)
@@ -169,6 +194,7 @@ def train_ensemble_bagging(num_models: int=5, training_dataset: DataLoader=None,
         ensemble_models.append(model)
         writer.close()
 
+    # Combine the trained models into a deep ensemble and save it
     ensemble = DeepEnsemble(ensemble_models)
     torch.save(ensemble.state_dict(), os.path.join(config.PATH_TO_SAVE_MODEL_DIR, f"resnet_ensemble_{datetime.now().strftime('%Y-%m-%d')}.pth"))
 
@@ -265,18 +291,11 @@ if __name__ == "__main__":
 
     train_loader = CustomDataset(source_dir=config.PATH_TO_TRAIN_DATA_DIR, include_depth=config.INCLUDE_DEPTH, world=True, bounds=config.OUTPUT_BOUNDS)
     val_loader = DataLoader(CustomDataset(source_dir=config.PATH_TO_VALIDATION_DATA_DIR, include_depth=config.INCLUDE_DEPTH, world=True, bounds=config.OUTPUT_BOUNDS), batch_size=config.BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=torch.cuda.is_available())
-    test_loader = DataLoader(CustomDataset(source_dir=config.PATH_TO_TEST_DATA_DIR, include_depth=config.INCLUDE_DEPTH, world=True, bounds=config.OUTPUT_BOUNDS), batch_size=config.BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=torch.cuda.is_available())
-
-    deep_ensemble = train_ensemble_bagging(num_models=config.NUM_MODELS, training_dataset=train_loader, validation_dataset=val_loader, model_parameters=config.MODEL_PARAMETERS, epochs=config.EPOCHS, lr=config.LR, batch_size=config.BATCH_SIZE, sample_ratio=config.BAGGING_SAMPLE_RATIO)
+    
+    deep_ensemble = train_ensemble_bagging(num_models=config.NUM_MODELS, training_dataset=train_loader, validation_dataset=val_loader, model_parameters=config.MODEL_PARAMETERS, epochs=config.EPOCHS, lr=config.LR, batch_size=config.BATCH_SIZE, bagging_ratio=config.BAGGING_SAMPLE_RATIO)
 
 
     val_save_path = os.path.join(config.PATH_TO_RESULTS_DIR, f"validationset_results_{datetime.now().strftime('%Y-%m-%d')}.json")
     val_results = test_ensemble(deep_ensemble, val_loader)
     print(f"Average Validation Loss: {val_results['average_loss']:.4f}")
     save_results(val_results, val_save_path)
-
-
-    test_save_path = os.path.join(config.PATH_TO_RESULTS_DIR, f"testset_results_{datetime.now().strftime('%Y-%m-%d')}.json")
-    test_results = test_ensemble(deep_ensemble, test_loader)
-    print(f"Average Test Loss: {test_results['average_loss']:.4f}")
-    save_results(test_results, test_save_path)

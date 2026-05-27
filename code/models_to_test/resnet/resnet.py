@@ -23,35 +23,44 @@ class DeepEnsemble(torch.nn.Module):
             model.to(self.device)
             model.eval()
 
-    def predict(self, X: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def predict(self, X: torch.Tensor, split_variances: bool=False) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         """
         Predict the output for the given input using the ensemble of models.
          Args:
             X (torch.Tensor): Input tensor the same shape as the input expected by each model in the ensemble.
+            split_variances (bool): Whether to return separate aleatoric and epistemic uncertainties.
          Returns:
-            tuple[torch.Tensor, torch.Tensor]: The ensemble prediction and uncertainty (mean and variance of the predictions from the individual models).
+            if split_variances is False:
+                tuple[torch.Tensor, torch.Tensor]: The ensemble prediction and total uncertainty (mean and variance of the predictions from the individual models).
+            if split_variances is True:
+                tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor, torch.Tensor]]: The ensemble prediction and separate aleatoric and epistemic uncertainties.
         """
         self.eval()
         X = X.to(self.device)
         with torch.no_grad():
             means = []
-            vars_ = []
+            vars = []
             
             for model in self.models:
                 mean, variance = model(X)
                 means.append(mean)
-                vars_.append(variance)
+                vars.append(variance)
                 
             means = torch.stack(means)
-            vars_ = torch.stack(vars_)
+            vars = torch.stack(vars)
 
             # Ensemble Mean calculation
             ensemble_mean = means.mean(dim=0)
             
             # Ensemble Variance calculation (total uncertainty = aleatoric + epistemic)
-            ensemble_var = (vars_ + means**2).mean(dim=0) - ensemble_mean**2
+            aleatoric_var = vars.mean(dim=0)
+            epistemic_var = torch.var(means, dim=0, unbiased=False)
+            ensemble_var = aleatoric_var + epistemic_var
 
-            return ensemble_mean, ensemble_var
+            if split_variances:
+                return ensemble_mean, (ensemble_var, aleatoric_var, epistemic_var)
+            else:
+                return ensemble_mean, ensemble_var
 
 class ResNetRegressionModel(torch.nn.Module):
     """
@@ -61,11 +70,13 @@ class ResNetRegressionModel(torch.nn.Module):
             input_dims (tuple[int]): The dimensions of the input tensor (channels, height, width). Default is (3, 370, 250).
             output_size (int): The number of regression targets. Default is 2 (e.g., x and y coordinates).
             freeze_backbone (bool): Whether to freeze the weights of the ResNet backbone during training. Default is True.
+            number_of_res_blocks (int): The number of residual blocks to use from the ResNet backbone. Default is 4.
     """
-    def __init__(self, input_dims: tuple[int] = (3, 370, 250), output_size: int = 2, freeze_backbone: bool = True):
+    def __init__(self, input_dims: tuple[int] = (3, 370, 250), output_size: int = 2, freeze_backbone: bool = True, number_of_res_blocks: int = 4):
         super(ResNetRegressionModel, self).__init__()
         self.output_size = output_size
         self.input_dims = input_dims
+        self.number_of_res_blocks = number_of_res_blocks
 
         self.resnet = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
 
@@ -86,7 +97,7 @@ class ResNetRegressionModel(torch.nn.Module):
             with torch.no_grad():
                 self.resnet.conv1.weight[:, :3, :, :] = old_conv.weight
         
-        self.feature_extractor = torch.nn.Sequential(*list(self.resnet.children())[:-(config.NUMBER_OF_RES_BLOCKS-10)])
+        self.feature_extractor = torch.nn.Sequential(*list(self.resnet.children())[:-(self.number_of_res_blocks-10)])
 
         if freeze_backbone:
             for name, param in self.feature_extractor.named_parameters():

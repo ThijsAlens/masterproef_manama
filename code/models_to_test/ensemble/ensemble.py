@@ -21,13 +21,17 @@ class DeepEnsemble(torch.nn.Module):
             model.to(self.device)
             model.eval()
 
-    def predict(self, X: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def predict(self, X: torch.Tensor, split_variances: bool=False) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         """
         Predict the output for the given input using the ensemble of models.
          Args:
             X (torch.Tensor): Input tensor the same shape as the input expected by each model in the ensemble.
+            split_variances (bool): Whether to return separate aleatoric and epistemic uncertainties.
          Returns:
-            tuple[torch.Tensor, torch.Tensor]: The ensemble prediction and uncertainty (mean and variance of the predictions from the individual models).
+            if split_variances is False:
+                tuple[torch.Tensor, torch.Tensor]: The ensemble prediction and total uncertainty (mean and variance of the predictions from the individual models).
+            if split_variances is True:
+                tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor, torch.Tensor]]: The ensemble prediction and separate aleatoric and epistemic uncertainties.
         """
         self.eval()
         X = X.to(self.device)
@@ -47,10 +51,14 @@ class DeepEnsemble(torch.nn.Module):
             ensemble_mean = means.mean(dim=0)
             
             # Ensemble Variance calculation (total uncertainty = aleatoric + epistemic)
-            ensemble_var = (vars + means**2).mean(dim=0) - ensemble_mean**2
+            aleatoric_var = vars.mean(dim=0)
+            epistemic_var = torch.var(means, dim=0, unbiased=False)
+            ensemble_var = aleatoric_var + epistemic_var
 
-            return ensemble_mean, ensemble_var
-
+            if split_variances:
+                return ensemble_mean, (ensemble_var, aleatoric_var, epistemic_var)
+            else:
+                return ensemble_mean, ensemble_var
 
 class SimpleCNNRegressionModel(torch.nn.Module):
     """

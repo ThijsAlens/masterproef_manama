@@ -6,17 +6,18 @@ We will describe the experiments done, present the obtained results, and analyze
 Finally, we will analyze the results and discuss their implications for the use of uncertainty-aware models in robotic applications.
 
 \section{Evaluation metrics}\label{ch:experiments_section:evaluation-metrics}
-To measure how good the model is performing, we need to have a way to see if the model is accurate (the mean prediction is close to the target) and if the uncertainty is communicated well (the uncertainty of the predictions is high when the error is high, and low when the error is low).
+To measure how well the model is performing, we need to have a way to see if the model is accurate (the mean prediction is close to the target) and if the uncertainty is communicated well (the uncertainty of the predictions is high when the error is high, and low when the error is low).
 This is a direct consequence of the chosen loss function, which is supposed to balance these two aspects.
 There are a few ways we can evaluate the model's performance, each with their own focus and advantages.
-The datapoints used for evaluation obviously need to be different from the datapoints used for training and validation to avoid data leakage.
+The data points used for evaluation obviously need to be different from the data points used for training and validation to avoid data leakage.
 
 \subsection{Loss Function}\label{ch:experiments_section:evaluation-metrics_subsection:loss-function}
-The most obvious choise to evaluate a given model, is to use the loss function.
+The most obvious choice to evaluate a given model is to use the loss function.
 This is a great way to have a single number to compare the capability of the model while keeping the balance of the error and uncertainty.
 
 It is the most important metric from a theoretical point of view, as it tells us exactly how well the model is at estimating its own weaknesses and strengths.
-However, it is not the best metric to use for our use case, as it does not give us the ability to translate the loss into a value which has a clear meaning in our context.
+However, it is not the best metric to use practically for our use case, as it does not have the ability to translate the loss into a value which has a clear meaning in the physical world.
+This is because it needs information about the real location of the object, which is not available when doing inference.
 
 \subsection{Uncertainty intervals}\label{ch:experiments_section:evaluation-metrics_subsection:uncertainty-intervals}
 In the end, the models need to be used as a part of a robotic system without causing any harm to the environment.
@@ -24,13 +25,12 @@ We thus need a way to evaluate the model's performance in a way that can easily 
 Seeing that the model is outputting a mean and a variance, the step to statistical measures of error and uncertainty is quite small.
 
 We want to be able to say something about the certainty of the error of the mean prediction.
-For example, we want to be able to say that we are 95\% certain that the error that the mean prediction falls in a certain interval.
-This means that the model can, with 95\% certainty, predict an interval of $[\bm{\mu}_\theta - \bm{\epsilon}, \bm{\mu}_\theta + \bm{\epsilon}]$ which contains the target value.
-Note that the model is outputting a mean and a variance, both for the $x$ and $y$ coordinates of the target position, so $\bm{\mu_\theta}$ is a 2D vector.
+For example, we want to be able to say that we are 95\% confident that the error on the mean prediction falls in a certain interval.
+This means that the model can, with 95\% certainty, predict an interval of $[\mu_\theta - \epsilon, \mu_\theta + \epsilon]$ which contains the target value.
 
-The $\epsilon$, is a product of the $\sigma_\theta$ and the Z-score. 
+The $\epsilon$ is a product of the $\sigma_\theta$ and the Z-score. 
 The Z-score maps the desired confidence (for example, 95\%) level to a standard normal distribution where $\mu=0$ and $\sigma=1$.
-\cref{eq:epsilon_calculation} shows how to calculate $\epsilon$ for a given confidence level $\alpha$ and a variance $\sigma^2_\theta$.
+\cref{eq:epsilon_calculation} shows how to calculate $\epsilon$ for a given confidence level $1-\alpha$ and a variance $\sigma^2_\theta$.
 
 \begin{subequations}\label{eq:epsilon_calculation}
     \begin{align}
@@ -38,15 +38,16 @@ The Z-score maps the desired confidence (for example, 95\%) level to a standard 
         \epsilon(\alpha, \sigma^2_\theta) &= z_\alpha \cdot \sqrt{\sigma^2_\theta}
     \end{align}
 \end{subequations}
-Note that the variables $\epsilon$, $\sigma_\theta$, and $\sigma^2_\theta$ are scalars, this thus holds in one dimension.
-To go to two dimensions, we need to change one thing, the $z_\alpha$.
-In one dimension, the $z_\alpha$ is a single value, but in two dimensions, we need to use a value from the chi-squared distribution with 2 degrees of freedom.
-\cref{eq:epsilon_calculation_2d} shows how to calculate $\bm{\epsilon}$ for a given confidence level $\alpha$ and a variance $\bm{\sigma^2_\theta}$.
+Note that the variables $\epsilon$, $\sigma_\theta$, and $\sigma^2_\theta$ are scalars, and thus this holds in one dimension.
+To go to two dimensions, we need to change one thing: the $z_\alpha$, as we need to use a value from the chi-squared distribution with 2 degrees of freedom.
+This is because we are now working with a multivariate normal distribution, and the confidence regions are now ellipses instead of one-dimensional intervals.
+This is essentially accounting for the fact that the prediction can be wrong in both dimensions, and thus we need to account for the combined error in both dimensions.
+\cref{eq:epsilon_calculation_2d} shows how to calculate $\bm{\epsilon}$ for a given confidence level $1-\alpha$ and a variance $\bm{\sigma^2_\theta}$.
 
 \begin{subequations}\label{eq:epsilon_calculation_2d}
     \begin{align}
-        \bm{\epsilon}(\alpha, \bm{\sigma}^2_\theta) &= \sqrt{\bm{\chi}^2_\alpha} \cdot \bm{\sigma}_\theta \\
-        \bm{\epsilon}(\alpha, \bm{\sigma}^2_\theta) &= \sqrt{\bm{\chi}^2_\alpha} \cdot \sqrt{\bm{\sigma}^2_\theta}
+        \bm{\epsilon}(\alpha, \bm{\sigma}^2_\theta) &= \sqrt{\chi^2_\alpha} \cdot \bm{\sigma}_\theta \\
+        \bm{\epsilon}(\alpha, \bm{\sigma}^2_\theta) &= \sqrt{\chi^2_\alpha} \cdot \sqrt{\bm{\sigma}^2_\theta}
     \end{align}
 \end{subequations}
 
@@ -59,21 +60,21 @@ This then gives us the following interval prediction:
 
 $x \in [50 - 4.90, 50 + 4.90]mm$ and $y \in [55 - 7.34, 55 + 7.34]mm$.
 
-These intervals, give a great way to evaluate the model's performance in a way that can be easily translated into the real world.
+These intervals provide a great way to translate the model's performance into something useful for the real world.
 
-\subsection{Classifying predictions based on error and uncertainty}
+\subsection{Classifying predictions based on error and uncertainty}\label{ch:experiments_section:evaluation-metrics_subsection:classifying-predictions-based-on-error-and-uncertainty}
 Using the interval predictions from \cref{ch:experiments_section:evaluation-metrics_subsection:uncertainty-intervals} along with the target value, opens up the possibility to classify the predictions into different categories based on their error and uncertainty.
 The following situations can occur:
 
 \begin{itemize}
     \item The model is confident it will succeed in grasping the object, and it does. This is a \gls{tp}. This is the ideal situation, as the model is accurate and confident in its predictions.
-    \item The model is not confident it will succeed in grasping the object, but it does. This is a \gls{fp}. This is a missed opportunity, as the model is timid
-    \item The model is confident it will succeed in grasping the object, but it does not. This is a \gls{fn}. This leads to dangerous situations, as the model is overconfident.
+    \item The model is confident it will succeed in grasping the object, but it does not. This is a \gls{fp}. This leads to dangerous situations, as the model is overconfident.
+    \item The model is not confident it will succeed in grasping the object, but it does. This is a \gls{fn}. This is a missed opportunity, as the model is timid.
     \item The model is not confident it will succeed in grasping the object, and it does not. This is a \gls{tn}. This is a safe situation, as the model is cautious when it should be.
 \end{itemize}
 
 To actually do this classification, we need to define the $max\_error$ the model can make while still grabbing the object successfully.
-This is a value that can be defined based on the specific use case, which in our case is the radiance of the object to be grasped, which is 15mm.
+This is a value that can be defined based on the specific use case, which in our case is the radius of the object to be grasped, which is 25 mm.
 This value is then translated, using \cref{eq:max_variance}, to a $maximum\_variance$ using the $\chi^2$ value for the desired confidence level and the number of dimensions, which is 95\% and 2 respectively in our case.
 
 \begin{equation}\label{eq:max_variance}
@@ -84,56 +85,161 @@ This gives us all the necessary information to calculate whether a prediction's 
 
 \begin{subequations}
     \begin{align}
-        max(\bm{\sigma}_\theta^2) &<= maximum\_variance \label{eq:confidence} \\
-        \sqrt{\sum_{k=1}^{d}(\bm{\mu}_k - \bm{y}_k)^2} &<= max\_error \label{eq:success}
+        max(\bm{\sigma}_\theta^2) &\leq maximum\_variance \label{eq:confidence} \\
+        \|\bm{\mu}_\theta - \bm{y}\|_2 &\leq max\_error \label{eq:success}
     \end{align}
 \end{subequations}
 
-If both of these conditions are satisfied, we have a \gls{tp}.
-If the first condition is satisfied, but the second condition is not, we have a \gls{fp}.
-If the first condition is not satisfied, but the second condition is, we have a \gls{fn}.
-If both conditions are not satisfied, we have a \gls{tn}.
+\begin{itemize}
+    \item If both of these conditions are satisfied, we have a \gls{tp}.
+    \item If the first condition is satisfied, but the second condition is not, we have a \gls{fp}.
+    \item If the first condition is not satisfied, but the second condition is, we have a \gls{fn}.
+    \item If both conditions are not satisfied, we have a \gls{tn}.
+\end{itemize}
+
 
 \subsection{Error-uncertainty graph}
-The statistical scores are well to cevaluate and compare single instances given to the models.
+The statistical scores work well to evaluate and compare single instances given to the models.
 The loss gives a general idea of how well the model is performing.
 But both of these metrics fail to give a greater overview of how the model is performing over a greater set of samples.
-The classification of predictions aids with this, but fails to communicate its hyperparameters and the severity of the errors and uncertainties.
-A graph, like shown in \cref{fig:error-uncertainty-graph_example}, gives a better overview of the models performence over a greater set of samples and the hyperparameters.
+The classification of predictions aids with this, but fails to communicate the severity of the errors and uncertainties.
+A graph, as shown in \cref{fig:error-uncertainty-graph_example}, gives a better overview of the models' performance over a greater set of samples.
 
 \begin{figure}
     \centering
     \includegraphics[width=1\textwidth]{static/error_variance_graph_example.png}
-    \caption{An example of an error-uncertainty graph.}
+    \caption[An example of an error-uncertainty graph.]{
+        An example of an error-uncertainty graph.
+        This graph visually shows the confidence intervals with the blue, green, orange, and red zones.
+        Everything below the blue line corresponds to the mean predictions being correct with a confidence level of 68.2\%, we would expect 68.2\% of the predictions to fall in this zone.
+        Everything below the green line (including the blue zone) corresponds to the mean predictions being correct with a confidence level of 95.4\%, we would expect 95.4\% of the predictions to fall in this zone.
+        Everything above the green line corresponds to the mean predictions being correct with a confidence level of 99.7\% or higher, we would expect the rest of the predictions (4.6\%) to fall in this zone.
+        Each point in the graph corresponds to a single coordinate prediction of the model, so for our models' 2D prediction, there will be two points in the graph for each input.
+    }
     \label{fig:error-uncertainty-graph_example}
 \end{figure}
 
-The y-axis of the graph shows the uncertainty of a given prediction, this is the $\sqrt{\sigma_{\theta, i}^2}$ of the model's output.
-The x-axis shows the error made by the model, this is calculated as $y_i - \mu_{\theta, i}$.
-The graph is devided into 4 zones, each corresponding to a certainty level ($\alpha$) of the model's predictions:
+The x-axis of the graph shows the uncertainty of a given prediction, this is the $\sqrt{\sigma_{\theta, i}^2}$ of the model's output.
+The y-axis shows the error made by the model, this is calculated as $|y_i - \mu_{\theta, i}|$.
+The graph is divided into 4 zones, each corresponding to a certainty level ($1-\alpha$) of the model's predictions:
 
 \begin{itemize}
-    \item Blue zone ($\alpha=0.68$): It is te be expected that 68\% of the predictions fall in this zone, as this is the center of the normal distribution. This is the "Cautious" zone, as the model is underconfident in its predictions.
-    \item Green zone ($\alpha=0.95$): It is to be expected that 27\% of the predictions fall in this zone, as this is the area between the 68\% and 95\% confidence levels of the normal distribution. This is the "Sweet Spot" zone, as the model is well calibrated in this zone.
-    \item Orange and red zone ($\lim_{\alpha \to 1}$): It is to be expected that 5\% of the predictions fall in this zone, as this is the area above the 95\% confidence level of the normal distribution. This is the "Danger" zone, as the model is blindly confident in its predictions while being way off.
+    \item Blue zone ($1-\alpha=0.68$): It is to be expected that 68.2\% of the predictions fall in this zone, as this is the center of the normal distribution.
+    \item Green zone ($1-\alpha=0.95$): It is to be expected that 27.2\% of the predictions fall in this zone, as this is the area between the 68.2\% and 95.4\% confidence levels of the normal distribution.
+    \item Orange and red zone ($\lim_{1-\alpha \to 1}$): It is to be expected that 4.6\% of the predictions fall in this zone, as this is the area above the 95.4\% confidence level of the normal distribution.
 \end{itemize}
 
-\section{Experiment 1: Evaluating on a test set}\label{ch:experiments_section:evaluating-on-a-test-set}
-The first test we conducted was to evaluate the model's on a test set.
-This test set does not differ from the training and validation set in terms of the distribution of the data, but it does differ in terms of the specific samples used.
-It would be expected that the models perform well on this and perform similarly to how they performed on the validation set.
+Note that each point in the graph corresponds to a single coordinate prediction of the model, so for our models' 2D prediction, there will be two points in the graph, one for the $x$ coordinate and one for the $y$ coordinate.
+
+\section{Experiment 0: Evaluating on the validation set}\label{ch:experiments_section:evaluating-on-the-validation-set}
+Before we do any testing, we need a baseline to compare the results of the tests to.
+This is why we decided to evaluate the models on the validation set first.
+\cref{tab:models_comparison_validation_set} and \cref{fig:error-uncertainty-graphs_validation-set} show the results of this experiment.
 
 \begin{table}[ht]
     \centering
-    \begin{tabular}{c !{\vrule width 2pt} c|c|c|c|c}
-        \textbf{Model index} & \textbf{Loss} & \textbf{TP} & \textbf{FP} & \textbf{FN} & \textbf{TN} \\
+    \begin{tabular}{c !{\vrule width 2pt} c|c|c|c|c|c|c}
+        \textbf{Model index} & \textbf{Loss} & \textbf{AV} & \textbf{EV} & \textbf{TP} & \textbf{FP} & \textbf{FN} & \textbf{TN} \\
         \hline
-        Deep Ensemble () & loss & TP & FP & FN & TN \\
-        ResNet Ensemble () & loss & TP & FP & FN & TN \\
-        MC Dropout () & loss & TP & FP & FN & TN \\
+        Deep Ensemble (6) & -2.98 & 27.33 & 6.13 & 35 & 1 & 4 & 0 \\
+        ResNet Ensemble (6) & -2.10 & 126.34 & 8.71 & 0 & 0 & 38 & 2 \\
+        ResNet Ensemble (7) & -2.22 & 125.28 & 4.90 & 0 & 0 & 39 & 1 \\
+        \gls{mc} Dropout (3) & -1.92 & 227.47 & 188.61 & 3 & 0 & 35 & 2 \\
+        \gls{mc} Dropout (4) & -2.10 & 119.76 & 93.29 & 9 & 0 & 30 & 1 \\
     \end{tabular}
-    \caption{
+    \caption[Comparison of the different models on the validation set.]{
+        Comparison of the different models on the validation set.
+        ``Model index'' refers to the specific model being evaluated.
+        ``Loss'' refers to the value of the loss function calculated on the validation set for the given model.
+        ``AV'' and ``EV'' refer to the average aleatoric variance and epistemic variance of the model's predictions on the validation set respectively.
+        ``TP'', ``FP'', ``FN'', and ``TN'' refer to the number of true positives, false positives, false negatives, and true negatives respectively, as defined in \cref{ch:experiments_section:evaluation-metrics_subsection:classifying-predictions-based-on-error-and-uncertainty}.
+        }
+    \label{tab:models_comparison_validation_set}
+\end{table}
+
+\begin{figure}[]
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/cnn/error-uncertainty-graph_validation-set_cnn-6.png}
+        \caption{Error-uncertainty graph for Deep Ensemble 6.}
+        \label{sub_fig:error-uncertainty-graph_validation-set_deep-ensemble-6}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/resnet/error-uncertainty-graph_validation-set_resnet-ensemble-6.png}
+        \caption{Error-uncertainty graph for ResNet Ensemble 6.}
+        \label{sub_fig:error-uncertainty-graph_validation-set_resnet-ensemble-6}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/resnet/error-uncertainty-graph_validation-set_resnet-ensemble-7.png}
+        \caption{Error-uncertainty graph for ResNet Ensemble 7.}
+        \label{sub_fig:error-uncertainty-graph_validation-set_resnet-ensemble-7}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/mc_dropout/error-uncertainty-graph_validation-set_mc-dropout-3.png}
+        \caption{Error-uncertainty graph for \gls{mc} Dropout 3.}
+        \label{sub_fig:error-uncertainty-graph_validation-set_mc-dropout-3}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/mc_dropout/error-uncertainty-graph_validation-set_mc-dropout-4.png}
+        \caption{Error-uncertainty graph for \gls{mc} Dropout 4.}
+        \label{sub_fig:error-uncertainty-graph_validation-set_mc-dropout-4}
+    \end{subfigure}
+    \caption{Error-uncertainty graphs for the models on the validation set.}
+    \label{fig:error-uncertainty-graphs_validation-set}
+\end{figure}
+
+As expected, the Deep Ensemble performs the best when translating its loss into the classification of predictions.
+It has some aleatoric variance, but this is to be expected, as the data has some inevitable noise in it.
+Overall, the \gls{cnn} models seem to agree quite well as the epistemic variance is very low.
+
+More surprising is the fact that the \gls{mc} Dropout, but especially the ResNet Ensembles, perform quite poorly when it comes to the classification of predictions. 
+Both these models also have quite a high aleatoric variance, which is not expected. 
+As the validation data is the same for all models, it should theoretically contain the exact same amount of baseline noise.
+
+The \gls{mc} Dropout model's capability suffers from the active dropout layers, making the model less capable of making accurate predictions (for the mean as well as the (aleatoric) variance).
+This is shown in the error-uncertainty graphs (\cref{sub_fig:error-uncertainty-graph_validation-set_mc-dropout-3} and \cref{sub_fig:error-uncertainty-graph_validation-set_mc-dropout-4}), where the points are more spread out when comparing it to the Deep Ensemble. 
+This is because during the training the model is evaluated with the dropout layers deactivated, which means that the model is trained to make predictions with the full capacity of the model.
+During inference, when dropout is active, the model is not able to use its full capacity, which leads to worse predictions and higher variance scores.
+
+The ResNet Ensembles' poor performance can be explained by looking at the error-uncertainty graphs (\cref{sub_fig:error-uncertainty-graph_test-set_resnet-ensemble-6} and \cref{sub_fig:error-uncertainty-graph_test-set_resnet-ensemble-7}) and the classification results more closely.
+Starting with the error-uncertainty graphs, the models are predicting the exact same uncertainty regardless of the actual error, which is shown by all the points being in two vertical bands.
+These bands are the $x$ and $y$ coordinates being predicted with the same hard-coded uncertainty.
+But this is to be expected, as both models use the PyTorch~\cite{src:pytorch} pretrained ResNet backbones, so the weights are not randomly initialized, but rather initialized with the same pretrained weights.
+These weights stem from a model trained on a classical classification task, which does not need any information about the uncertainty of the predictions.
+ResNet Ensemble 6 is only able to change the weights of the final (custom) layer, which is not enough to add any meaningful information about the uncertainty of the predictions.
+But even if the weights can be changed during training (ResNet Ensemble 7), they are so optimized for classification that they are not able to adjust to the regression task, given our limited training data.
+When looking at the classification results, we can see that there are lots of \glspl{fn}. This means that these models are capable of detecting the object and making a prediction close enough to the target.
+However, their incapability to predict the uncertainty of their predictions makes them classify these predictions as \glspl{fn} instead of \glspl{tp}.
+
+\section{Experiment 1: Evaluating on a test set}\label{ch:experiments_section:evaluating-on-a-test-set}
+The first real test we conducted was to evaluate the models on a test set of 40 samples.
+This test set does not differ from the training and validation set in terms of the distribution of the data, but it does differ in terms of the specific samples used.
+It would be expected that the models perform well and similarly to how they performed on the validation set.
+
+\cref{tab:models_comparison_test_set} and \cref{fig:error-uncertainty-graphs_test-set} show the results of this experiment.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{c !{\vrule width 2pt} c|c|c|c|c|c|c}
+        \textbf{Model index} & \textbf{Loss} & \textbf{AV} & \textbf{EV} & \textbf{TP} & \textbf{FP} & \textbf{FN} & \textbf{TN} \\
+        \hline
+        Deep Ensemble (6) & 1.87 & 28.38 & 49.00 & 35 & 1 & 3 & 1 \\
+        ResNet Ensemble (6) & 8.64 & 126.45 & 13.91 & 0 & 0 & 35 & 5 \\
+        ResNet Ensemble (7) & 19.41 & 125.30 & 10.64 & 0 & 0 & 37 & 3 \\
+        \gls{mc} Dropout (3) & -0.22 & 245.65 & 279.87 & 4 & 0 & 30 & 6 \\
+        \gls{mc} Dropout (4) & 0.06 & 133.98 & 183.63 & 6 & 0 & 29 & 5 \\
+    \end{tabular}
+    \caption[Comparison of the different models on the test set.]{
         Comparison of the different models on the test set.
+        ``Model index'' refers to the specific model being evaluated.
+        ``Loss'' refers to the value of the loss function calculated on the test set for the given model.
+        ``AV'' and ``EV'' refer to the average aleatoric variance and epistemic variance of the model's predictions on the test set respectively.
+        ``TP'', ``FP'', ``FN'', and ``TN'' refer to the number of true positives, false positives, false negatives, and true negatives respectively, as defined in \cref{ch:experiments_section:evaluation-metrics_subsection:classifying-predictions-based-on-error-and-uncertainty}.
         }
     \label{tab:models_comparison_test_set}
 \end{table}
@@ -142,22 +248,374 @@ It would be expected that the models perform well on this and perform similarly 
     \centering
     \begin{subfigure}{0.49\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{static/error-uncertainty-graph_deep-ensemble_1.png}
-        \caption{Error-uncertainty graph for Deep Ensemble 1.}
-        \label{sub_fig:error-uncertainty-graph_example_1}
+        \includegraphics[width=\textwidth]{static/cnn/error-uncertainty-graph_test-set_cnn-6.png}
+        \caption{Error-uncertainty graph for Deep Ensemble 6.}
+        \label{sub_fig:error-uncertainty-graph_test-set_deep-ensemble-6}
     \end{subfigure}
-    \hfill
     \begin{subfigure}{0.49\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{static/error-uncertainty-graph_deep-ensemble_2.png}
-        \caption{Error-uncertainty graph for Deep Ensemble 2.}
-        \label{sub_fig:error-uncertainty-graph_example_2}
+        \includegraphics[width=\textwidth]{static/resnet/error-uncertainty-graph_test-set_resnet-ensemble-6.png}
+        \caption{Error-uncertainty graph for ResNet Ensemble 6.}
+        \label{sub_fig:error-uncertainty-graph_test-set_resnet-ensemble-6}
     \end{subfigure}
-    \caption{Error-uncertainty graphs for the Deep Ensemble models on the test set.}
-    \label{fig:Error-uncertainty-graphs_test-set_deep-ensembles}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/resnet/error-uncertainty-graph_test-set_resnet-ensemble-7.png}
+        \caption{Error-uncertainty graph for ResNet Ensemble 7.}
+        \label{sub_fig:error-uncertainty-graph_test-set_resnet-ensemble-7}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/mc_dropout/error-uncertainty-graph_test-set_mc-dropout-3.png}
+        \caption{Error-uncertainty graph for \gls{mc} Dropout 3.}
+        \label{sub_fig:error-uncertainty-graph_test-set_mc-dropout-3}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/mc_dropout/error-uncertainty-graph_test-set_mc-dropout-4.png}
+        \caption{Error-uncertainty graph for \gls{mc} Dropout 4.}
+        \label{sub_fig:error-uncertainty-graph_test-set_mc-dropout-4}
+    \end{subfigure}
+    \caption{Error-uncertainty graphs for the models on the test set.}
+    \label{fig:error-uncertainty-graphs_test-set}
+\end{figure}
+
+The first thing to notice is that the models perform quite differently on the test set.
+
+The loss values are a lot higher compared to the validation set, especially for the ResNet Ensembles.
+The \gls{mc} Dropout models hold up quite well, but fail when it comes to the classification of predictions.
+While the Deep Ensemble's loss is quite high, it performs very well when it comes to the classification of predictions.
+
+If we were to actually use the models for our use case, the Deep Ensemble is the only model that can be used, as it is the only model that has a lot of \gls{tp} (justified confidence), a very low number of \gls{fp} (unjustified confidence), a low number of \gls{fn} (unjustified rejections), and very few \gls{tn} (justified rejections).
+The other models are capable of making accurate mean predictions, but they fail to capture the uncertainty of their predictions.
+
+The ResNet Ensembles have the same issues as observed on the validation set, as they are not able to capture the uncertainty of their predictions while being quite accurate with their mean predictions, leading to a lot of \gls{fn}.
+
+The smallest \gls{mc} Dropout model (3) has a higher aleatoric variance than the larger model (4). 
+This makes sense as the smaller model has less capacity to handle the internal noise of the dropout layers, so it has to compensate more by increasing the aleatoric variance to avoid being penalized too much by the loss function.
+This capacity limitation is also true for the epistemic variance. 
+The smaller model has a higher epistemic variance than the larger model, showing that the different dropout masks are leading to a wider spread in its predictions. 
+The classification of predictions for the \gls{mc} Dropout models also shows this trend, as the smaller model is slightly worse than the larger model because of this.
+
+The error-uncertainty graphs are quite interesting as well.
+Overall they all have the majority of the points under the 25mm absolute error, which means that the model's mean predictions are accurate enough to grasp the object.
+However, the uncertainty of the predictions is a bit more spread out with only the Deep Ensemble showing a low uncertainty.
+The maximum uncertainty allowed by our use case is 10.21mm, which is the value calculated by taking the square root of \cref{eq:max_variance} with a $max\_error$ of 25mm and a confidence level of 95\%.
+
+The graphs of the ResNet ensembles show the same issue as observed on the validation set, as the predictions are in the two same clusters.
+
+The graphs also show that there are some outliers, which are present in all the models.
+When taking a closer look at these samples (\cref{fig:test-set-outliers}), we can see that they are the result of an image with a arm flying through it.
+This is something that was not present in the training and validation set.
+It is thus only logical that the model is not able to handle it properly.
+
+\begin{figure}[]
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/outlier_test-set_colour.png}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/outlier_test-set_depth.png}
+    \end{subfigure}
+    \caption{The outliers in the test set.}
+    \label{fig:test-set-outliers}
 \end{figure}
 
 \section{Experiment 2: Evaluating on out-of-distribution data}\label{ch:experiments_section:evaluating-on-out-of-distribution-data}
-\subsection{Multiple objects in the scene}
-\subsection{Difficult lighting}
+The second experimtent we conducted was to evaluate the models on out-of-distribution data.
+Because the models are trained on the data it is trained on, it is expected that the models will perform worse on data that is different from the training data.
+Worse in the sense that they should have no idea where the object is, so the mean predictions should be inaccurate, and the uncertainty should be high, as the model should be aware that it is not able to make accurate predictions.
+
+There are a few ways we made the data out-of-distribution to compare them and see if one performs better than the others.
+Each expiriment uses a test set of 20 samples.
+
+\begin{itemize}
+    \item Multiple objects in the scene: We added multiple objects to the scene. 
+    These objects could be different from the object to be grasped, but they could also be the same object surrounded by other objects, etc.
+    \item Difficult lighting: We added difficult lighting conditions to the scene, such as shadows, low light, etc.
+    \item Human intervention: We added human intervention to the scene, such as a human hand flying through the scene.
+\end{itemize}
+
+\subsection{Multiple objects in the scene}\label{ch:experiments_section:evaluating-on-out-of-distribution-data_subsection:multiple-objects-in-the-scene}
+In this experiment we added some unknown objects to the scene, for example, some keys, a phone, a translucent version of the object to be grasped, etc.
+To give an idea of how the data looks like, \cref{fig:out-of-distribution-multiple-objects} shows some examples of the data used in this experiment.
+
+\begin{figure}[]
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/multiple-objects_colour-1.png}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/multiple-objects_colour-2.png}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/multiple-objects_colour-3.png}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/multiple-objects_colour-4.png}
+    \end{subfigure}
+    \caption{Examples of the data used in the out-of-distribution experiment with multiple objects in the scene.}
+    \label{fig:out-of-distribution-multiple-objects}
+\end{figure}
+
+\cref{tab:models_comparison_out-of-distribution-multiple-objects} and \cref{fig:error-uncertainty-graph_out-of-distribution-multiple-objects} show the results of this experiment.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{c !{\vrule width 2pt} c|c|c|c|c|c|c}
+        \textbf{Model index} & \textbf{Loss} & \textbf{AV} & \textbf{EV} & \textbf{TP} & \textbf{FP} & \textbf{FN} & \textbf{TN} \\
+        \hline
+        Deep Ensemble (6) & 36.81 & 5.81 & 4477.91 & 1 & 1 & 0 & 18 \\
+        ResNet Ensemble (6) & 119.67 & 125.42 & 230.64 & 0 & 0 & 1 & 19 \\
+        ResNet Ensemble (7) & 87.48 & 124.98 & 250.92 & 0 & 0 & 1 & 19 \\
+        \gls{mc} Dropout (3) & 21.86 & 350.79 & 2598.35 & 0 & 0 & 0 & 20 \\
+        \gls{mc} Dropout (4) & 38.93 & 56.55 & 1350.18 & 0 & 0 & 1 & 19 \\
+    \end{tabular}
+    \caption[Comparison of the different models on out-of-distribution data with multiple objects.]{
+        Comparison of the different models on out-of-distribution data with multiple objects.
+        ``Model index'' refers to the specific model being evaluated.
+        ``Loss'' refers to the value of the loss function calculated on the test set for the given model.
+        ``AV'' and ``EV'' refer to the average aleatoric variance and epistemic variance of the model's predictions on the test set respectively.
+        ``TP'', ``FP'', ``FN'', and ``TN'' refer to the number of true positives, false positives, false negatives, and true negatives respectively, as defined in \cref{ch:experiments_section:evaluation-metrics_subsection:classifying-predictions-based-on-error-and-uncertainty}.
+        }
+    \label{tab:models_comparison_out-of-distribution-multiple-objects}
+\end{table}
+
+\begin{figure}[]
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/cnn/error-uncertainty-graph_out-of-distribution-multiple-objects_cnn-6.png}
+        \caption{Error-uncertainty graph for Deep Ensemble 6.}
+        \label{sub_fig:error-uncertainty-graph_out-of-distribution-multiple-objects_deep-ensemble-6}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/resnet/error-uncertainty-graph_out-of-distribution-multiple-objects_resnet-ensemble-6.png}
+        \caption{Error-uncertainty graph for ResNet Ensemble 6.}
+        \label{sub_fig:error-uncertainty-graph_out-of-distribution-multiple-objects_resnet-ensemble-6}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/resnet/error-uncertainty-graph_out-of-distribution-multiple-objects_resnet-ensemble-7.png}
+        \caption{Error-uncertainty graph for ResNet Ensemble 7.}
+        \label{sub_fig:error-uncertainty-graph_out-of-distribution-multiple-objects_resnet-ensemble-7}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/mc_dropout/error-uncertainty-graph_out-of-distribution-multiple-objects_mc-dropout-3.png}
+        \caption{Error-uncertainty graph for \gls{mc} Dropout 3.}
+        \label{sub_fig:error-uncertainty-graph_out-of-distribution-multiple-objects_mc-dropout-3}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/mc_dropout/error-uncertainty-graph_out-of-distribution-multiple-objects_mc-dropout-4.png}
+        \caption{Error-uncertainty graph for \gls{mc} Dropout 4.}
+        \label{sub_fig:error-uncertainty-graph_out-of-distribution-multiple-objects_mc-dropout-4}
+    \end{subfigure}
+    \caption{Error-uncertainty graphs for the models on out-of-distribution data with multiple objects.}
+    \label{fig:error-uncertainty-graph_out-of-distribution-multiple-objects}
+\end{figure}
+
+This experiment shows that the models are indeed able to tell that the data is different from what they have seen during training, as the loss values are very high and the uncertainty of the predictions is quite high as well.
+There are however some important things to point out.
+
+The Deep Ensemble and \gls{mc} Dropout 3 are the only models with a relatively low average aleatoric variance.
+This is to be expected as the camera is the same, the position of the camera is the same, the way the centers are annotated etc., so the amount of noise in the data should be the same as well.
+The fact that the aleatoric variance is much higher for the other models, but especially the other \gls{mc} Dropout model, is a bit surprising.
+
+When looking at the classification results, it seems that all the models can tell when they are incapable of making accurate predictions, as they all produced a high number of \gls{tn}.
+However, this should be taken with a grain of salt:
+\begin{itemize}
+    \item The ResNet Ensembles never managed to get their variance predictions low enough in the first place (they were constant). Now, on this test set, their mean predictions are completely inaccurate as well.
+    \item The \gls{mc} Dropout models were also unable to predict a low enough variance to confidently classify their predictions as \gls{tp}, even when their mean predictions were highly accurate on the validation set. Now, on this out-of-distribution data, their mean predictions have become inaccurate as well.
+\end{itemize}
+The only model we can actually trust to recognize its own limitations is the Deep Ensemble. It is the only architecture that correctly identified a high number of \gls{tp} originally on the validation set, while successfully defaulting to a high number of \gls{tn} on this difficult test set.
+
+Very interesting to see is the fact that the ResNet Ensembles are able to vary their uncertainty predictions in this experiment.
+This can be explained by the increase in epistemic variance, which is a consequence of the model not being able to make accurate predictions anymore.
+Even the pretrained weights are not able to help the individual ResNet models to make accurate predictions.
+This increase in epistemic variance inevitably leads to a higher total variance, which explains the deviation from the two vertical bands in the error-uncertainty graphs that we observed in \cref{ch:experiments_section:evaluating-on-a-test-set} and \cref{ch:experiments_section:evaluating-on-the-validation-set}.
+
+\subsection{Difficult lighting}\label{ch:experiments_section:evaluating-on-out-of-distribution-data_subsection:difficult-lighting}
+As a second out-of-distribution experiment, we added difficult lighting conditions to the scene, such as shadows, low light, etc.
+\cref{fig:out-of-distribution-difficult-lighting} shows some examples of the data used in this experiment.
+
+\begin{figure}[]
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/difficult-lighting_colour-1.png}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/difficult-lighting_colour-2.png}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/difficult-lighting_colour-3.png}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/difficult-lighting_colour-4.png}
+    \end{subfigure}
+    \caption{Examples of the data used in the out-of-distribution experiment with difficult lighting.}
+    \label{fig:out-of-distribution-difficult-lighting}
+\end{figure}
+
+\cref{tab:models_comparison_out-of-distribution-difficult-lighting} and \cref{fig:error-uncertainty-graph_out-of-distribution-difficult-lighting} show the results of this experiment.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{c !{\vrule width 2pt} c|c|c|c|c|c|c}
+        \textbf{Model index} & \textbf{Loss} & \textbf{AV} & \textbf{EV} & \textbf{TP} & \textbf{FP} & \textbf{FN} & \textbf{TN} \\
+        \hline
+        Deep Ensemble (6) & 1.87 & 10.53 & 10882.30 & 0 & 0 & 1 & 19 \\
+        ResNet Ensemble (6) & 65.97 & 125.30 & 173.23 & 0 & 0 & 0 & 20 \\
+        ResNet Ensemble (7) & 52.97 & 125.00 & 412.24 & 0 & 0 & 0 & 20 \\
+        \gls{mc} Dropout (3) & 8.35 & 1053.27 & 5011.44 & 0 & 0 & 0 & 20 \\
+        \gls{mc} Dropout (4) & 8.32 & 121.34 & 4800.47 & 0 & 0 & 1 & 19 \\
+    \end{tabular}
+    \caption[Comparison of the different models on out-of-distribution data with difficult lighting.]{
+        Comparison of the different models on out-of-distribution data with difficult lighting.
+        ``Model index'' refers to the specific model being evaluated.
+        ``Loss'' refers to the value of the loss function calculated on the test set for the given model.
+        ``AV'' and ``EV'' refer to the average aleatoric variance and epistemic variance of the model's predictions on the test set respectively.
+        ``TP'', ``FP'', ``FN'', and ``TN'' refer to the number of true positives, false positives, false negatives, and true negatives respectively, as defined in \cref{ch:experiments_section:evaluation-metrics_subsection:classifying-predictions-based-on-error-and-uncertainty}.
+        }
+    \label{tab:models_comparison_out-of-distribution-difficult-lighting}
+\end{table}
+
+\begin{figure}[]
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/cnn/error-uncertainty-graph_out-of-distribution-difficult-lighting_cnn-6.png}
+        \caption{Error-uncertainty graph for Deep Ensemble 6.}
+        \label{sub_fig:error-uncertainty-graph_out-of-distribution-difficult-lighting_deep-ensemble-6}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/resnet/error-uncertainty-graph_out-of-distribution-difficult-lighting_resnet-ensemble-6.png}
+        \caption{Error-uncertainty graph for ResNet Ensemble 6.}
+        \label{sub_fig:error-uncertainty-graph_out-of-distribution-difficult-lighting_resnet-ensemble-6}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/resnet/error-uncertainty-graph_out-of-distribution-difficult-lighting_resnet-ensemble-7.png}
+        \caption{Error-uncertainty graph for ResNet Ensemble 7.}
+        \label{sub_fig:error-uncertainty-graph_out-of-distribution-difficult-lighting_resnet-ensemble-7}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/mc_dropout/error-uncertainty-graph_out-of-distribution-difficult-lighting_mc-dropout-3.png}
+        \caption{Error-uncertainty graph for \gls{mc} Dropout 3.}
+        \label{sub_fig:error-uncertainty-graph_out-of-distribution-difficult-lighting_mc-dropout-3}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/mc_dropout/error-uncertainty-graph_out-of-distribution-difficult-lighting_mc-dropout-4.png}
+        \caption{Error-uncertainty graph for \gls{mc} Dropout 4.}
+        \label{sub_fig:error-uncertainty-graph_out-of-distribution-difficult-lighting_mc-dropout-4}
+    \end{subfigure}
+    \caption{Error-uncertainty graphs for the models on out-of-distribution data with difficult lighting.}
+    \label{fig:error-uncertainty-graph_out-of-distribution-difficult-lighting}
+\end{figure}
+
+As with the previous experiment, the models are able to recognize that the data is different from what they have seen during training.
+The loss values are high again, as well as the uncertainty of the predictions.
+It is however, interesting to see that the effect of changing the lighting conditions is not as bad as adding multiple objects to the scene, as the loss values and uncertainty values are generally lower than in the previous experiment.
+Seeing that the variances are higher than in \cref{ch:experiments_section:evaluating-on-out-of-distribution-data_subsection:multiple-objects-in-the-scene}, it must be that the models' mean predictions are (a bit) more accurate than in the previous experiment.
+This is also shown in the error-uncertainty graphs.
+
 \subsection{Human intervention}
+In this last out-of-distribution experiment, we added human intervention to the scene, such as a human hand flying through the scene.
+Some examples of the data used in this experiment can be seen in \cref{fig:out-of-distribution-human-intervention}.
+
+\begin{figure}[]
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/human-intervention_colour-1.png}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/human-intervention_colour-2.png}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/human-intervention_colour-3.png}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/human-intervention_colour-4.png}
+    \end{subfigure}
+    \caption{Examples of the data used in the out-of-distribution experiment with human intervention.}
+    \label{fig:out-of-distribution-human-intervention}
+\end{figure}
+
+\cref{tab:models_comparison_out-of-distribution-human-intervention} and \cref{fig:error-uncertainty-graph_out-of-distribution-human-intervention} show the results of this experiment.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{c !{\vrule width 2pt} c|c|c|c|c|c|c}
+        \textbf{Model index} & \textbf{Loss} & \textbf{AV} & \textbf{EV} & \textbf{TP} & \textbf{FP} & \textbf{FN} & \textbf{TN} \\
+        \hline
+        Deep Ensemble (6) & 58.21 & 0.93 & 10582.85 & 0 & 0 & 0 & 20 \\
+        ResNet Ensemble (6) & 197.18 & 125.09 & 747.82 & 0 & 0 & 0 & 20 \\
+        ResNet Ensemble (7) & 165.23 & 124.94 & 575.94 & 0 & 0 & 0 & 20 \\
+        \gls{mc} Dropout (3) & 23.93 & 1203.94 & 7251.95 & 0 & 0 & 0 & 20 \\
+        \gls{mc} Dropout (4) & 50.93 & 85.12 & 4889.71 & 0 & 0 & 0 & 20 \\
+    \end{tabular}
+    \caption[Comparison of the different models on out-of-distribution data with human intervention.]{
+        Comparison of the different models on out-of-distribution data with human intervention.
+        ``Model index'' refers to the specific model being evaluated.
+        ``Loss'' refers to the value of the loss function calculated on the test set for the given model.
+        ``AV'' and ``EV'' refer to the average aleatoric variance and epistemic variance of the model's predictions on the test set respectively.
+        ``TP'', ``FP'', ``FN'', and ``TN'' refer to the number of true positives, false positives, false negatives, and true negatives respectively, as defined in \cref{ch:experiments_section:evaluation-metrics_subsection:classifying-predictions-based-on-error-and-uncertainty}.
+        }
+    \label{tab:models_comparison_out-of-distribution-human-intervention}
+\end{table}
+
+\begin{figure}[]
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/cnn/error-uncertainty-graph_out-of-distribution-human-intervention_cnn-6.png}
+        \caption{Error-uncertainty graph for Deep Ensemble 6.}
+        \label{sub_fig:error-uncertainty-graph_out-of-distribution-human-intervention_deep-ensemble-6}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/resnet/error-uncertainty-graph_out-of-distribution-human-intervention_resnet-ensemble-6.png}
+        \caption{Error-uncertainty graph for ResNet Ensemble 6.}
+        \label{sub_fig:error-uncertainty-graph_out-of-distribution-human-intervention_resnet-ensemble-6}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/resnet/error-uncertainty-graph_out-of-distribution-human-intervention_resnet-ensemble-7.png}
+        \caption{Error-uncertainty graph for ResNet Ensemble 7.}
+        \label{sub_fig:error-uncertainty-graph_out-of-distribution-human-intervention_resnet-ensemble-7}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/mc_dropout/error-uncertainty-graph_out-of-distribution-human-intervention_mc-dropout-3.png}
+        \caption{Error-uncertainty graph for \gls{mc} Dropout 3.}
+        \label{sub_fig:error-uncertainty-graph_out-of-distribution-human-intervention_mc-dropout-3}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{static/mc_dropout/error-uncertainty-graph_out-of-distribution-human-intervention_mc-dropout-4.png}
+        \caption{Error-uncertainty graph for \gls{mc} Dropout 4.}
+        \label{sub_fig:error-uncertainty-graph_out-of-distribution-human-intervention_mc-dropout-4}
+    \end{subfigure}
+    \caption{Error-uncertainty graphs for the models on out-of-distribution data with human intervention.}
+    \label{fig:error-uncertainty-graph_out-of-distribution-human-intervention}
+\end{figure}
+
+The models are again able to recognize that the data is different from what they have seen during training, resulting in all of the samples being classified as \gls{tn}.
+It is also apparent that the effect of human intervention is even worse than the effect of multiple objects in the scene, as the loss values and uncertainty values are generally higher than in that experiment.
+
+These effects can be pulled through to the rest of the results as well, as \cref{fig:error-uncertainty-graph_out-of-distribution-human-intervention} shows that the error of the predictions is quite high, and the uncertainty is quite high as well.
