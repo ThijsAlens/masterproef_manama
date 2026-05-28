@@ -1,5 +1,17 @@
+Robots are increasingly used in factories and warehouses to automate complex tasks, heavily relying on \gls{ai} and \gls{cv} to interact with their environment.
+Grasping objects is a task which requires the robot to localize the object in its environment.
+This environment can be quite challenging, with varying lighting conditions, reflections, dust on the camera lens, humans interacting with the robot, etc.
+In such conditions, \gls{ai} systems can struggle to make accurate predictions, and fails to inform its surroundings about its uncertainty, which can lead to unsafe situations.
 
-This (short) summary, accessible to a wide audience, is written in English and contains a \textbf{maximum of 3500 characters}. This summary must also be uploaded to KU Loket.
+In this thesis, we explore where this uncertainty comes from, how to quantify it and how \gls{ai} models can be adapted and trained to deal with uncertainty.
+Specifically to a regression task of predicting the center of an object in real-world situations.
+Ultimately designing a model that can reliably predict the center of an object, while also providing a real-world interpretable uncertainty estimate so that actions can be taken accordingly.
 
+We created a dataset with images of an object with ground truth labels for the position of the object in both real-world coordinates and pixel coordinates.
+This dataset allows for multiple ways to balance complexity of the model and untracked data uncertainty.
 
-Keywords: Enter (more or less) five keywords.
+We developed multiple uncertainty aware model architectures: a custom \gls{cnn} ensemble, a ResNet-18 ensemble, and a \gls{mc} Dropout model.
+To validate these models, we used the \gls{nll} loss function, which balances the accuracy of the spatial predictions with the calibration of the uncertainty estimation.
+After training and validating, we took the most promising models and evaluated them on a test set with a few different metrics.
+The results showed that the custom \gls{cnn} ensemble performed the best, being able to predict confidently and accurately when appropriate, and successfully indicating when it was not.
+However, the other models still have some improvements to be made, along with more tests on more diverse situations and different options to use the dataset.

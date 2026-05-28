@@ -412,11 +412,7 @@ This master's thesis is an examination document that has not been corrected for 
 \titlep        
 
 \ifacknowledgementspage 
-\ifthenelse{\equal{\@campus}{denayer}\OR \equal{\@campus}{geel} \OR \equal{\@campus}{gent} \OR \equal{\@campus}{groept} \OR \equal{\@campus}{brugge}}{
-\chapter*{Voorwoord} \@acknowledgementsfile
-}{
-\chapter*{Preface} \@acknowledgementsfile
-}
+    \chapter*{Preface} \@acknowledgementsfile
 \fi
 
 \ifthenelse{\equal{\@campus}{denayer}\OR \equal{\@campus}{geel} \OR \equal{\@campus}{gent} \OR \equal{\@campus}{groept} \OR \equal{\@campus}{brugge}}{
@@ -427,8 +423,6 @@ This master's thesis is an examination document that has not been corrected for 
 
 
 \ifabstractpage 
-\chapter*{Samenvatting} \@abstractfiledutch
-\clearpage
 \chapter*{Summary} \@abstractfileenglish
 \fi
 

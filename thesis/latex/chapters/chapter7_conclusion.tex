@@ -1,9 +1,31 @@
 % !TeX root = thesis.tex
 
 \chapter{Conclusion}\label{ch:conclusion}
+In this thesis, we explored the use of uncertainty-aware deep learning models for a regression task in the context of robot arm grasping under challenging real-world conditions.
+We created a dataset with ground truth labels for the position of the objects in both real-world coordinates and pixel coordinates.
+This was done by using a virtual grid so the images did not contain any artificial markers for the model to exploit.
+The dataset contained 400 standard images to use for training and validation, and 60 images with challenging conditions reserved for testing.
+
+We examined what uncertainty is, what different sources it can have, and how it can be estimated in the context of \glspl{dnn}.
+We trained three different approximations of Bayesian \glspl{nn}: a custom \gls{cnn} ensemble, a ResNet-18 ensemble, and a \gls{mc} Dropout model.
+For this training, we used the \gls{nll} loss function, which balances the accuracy of the spatial predictions with the calibration of the uncertainty estimation.
+
+After training, we took the most promising models and evaluated them on a test set featuring real-world challenging conditions.
+We used a variety of metrics to evaluate the models, such as uncertainty intervals, error-uncertainty graphs, binary classification based on precision requirements, and the \gls{nll} loss.
+The results showed that the custom \gls{cnn} ensemble performed the best, being able to predict confidently and accurately when appropriate, and successfully indicating when it was not.
 
 \section{Future work} \label{ch:conclusion_section:future-work}
-Pixel-coordinates vs real-world coordinates, which more accuratly represents the real-world position of the objects?
-Pixel coordinates as input to the model + post-processing to convert to real-world coordinates.
-Addaptations to the models (especially resnet and mc dropout) to make them more suitable for our use case.
-More data, and more diverse data.
+The work is definitely not complete yet, with still lots of things to explore and improve.
+First of all, we only tested our models on the real-world part of our dataset.
+However, we did not test the models being trained on the pixel coordinates and then postprocess the output to real-world coordinates.
+This would make the \gls{ai} system less complex, and it would also eliminate the interpolation of the real-world coordinates, but it would need a translation from predicted pixel coordinates to real-world coordinates, which adds uncertainty we cannot account for.
+
+A second thing to explore are adaptations to the models themselves, especially the ResNet Ensemble and \gls{mc} Dropout models, to make them more suitable for our use case.
+We found that the ResNet architecture, with pretrained weights, struggled to capture uncertainty.
+It can be interesting to see how this proven architecture can be adapted to our use case by for example training the weights completely from scratch, and if it can be made to work with the limited data we have.
+The \gls{mc} Dropout model struggled with being precise enough, as its active dropout layers inflated its baseline uncertainty.
+The tradeoff between precision, dropout rates, and uncertainty estimation capabilities is something that can be explored further.
+
+Finally, the models we trained were trained and evaluated on a rather small dataset, with a limited variety of conditions.
+It would be interesting to see how the models perform on more data, more diverse data, more challenging conditions, etc.
+It would also be interesting to see if fine-tuning the models on specific conditions can help with their performance in those conditions.

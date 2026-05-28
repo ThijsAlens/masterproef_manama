@@ -156,7 +156,7 @@ We compared them using the validation loss on the full ensemble as well as the i
         5 & [8, 16, 32] & $5\cdot10^{-4}$ & 32 & 0.8 & 60 & 5 & -2.3003 \\
         6 & [8, 16, 32] & $5\cdot10^{-4}$ & 32 & None & 60 & 3 & -2.9813 \\
     \end{tabular}
-    \caption{
+    \caption[Comparison of different architectures for the simple CNN model]{
         Comparison of different architectures for the simple CNN model.
         ``Lr'' stands for learning rate, ``Bs'' stands for batch size, ``Br'' stands for bagging ratio, ``m'' stands for the number of models in the ensemble, and ``Loss'' stands for the ensemble validation loss.
     }
@@ -258,7 +258,7 @@ The hyperparameters were varied to obtain the best validation loss
         7 & 4 & $1\cdot10^{-4}$ & 32 & None & 100 & 5 & No & -2.2162 \\
         8 & 4 & $1\cdot10^{-4}$ & 32 & 0.8 & 100 & 5 & Yes & -0.4399 \\
     \end{tabular}
-    \caption{
+    \caption[Comparison of different architectures for the ResNet model]{
         Comparison of different architectures for the ResNet model.
         ``Architecture'' represents the number of residual blocks of the original ResNet used (8 blocks is the whole original network), ``Lr'' stands for learning rate, ``Bs'' stands for batch size, ``Br'' stands for bagging ratio, ``m'' stands for the number of models in the ensemble, ``FB'' stands for freezing the backbone (using the ImageNet-1K~\cite{src:imagenet} pretrained weights), and ``Loss'' stands for the ensemble validation loss.
     }
@@ -355,7 +355,7 @@ Note that dropout is disabled during validation so we can measure the model's tr
         5 & [32, 64, 128] & 0.1 & $1\cdot10^{-3}$ & 32 & 100 & 100 & -1.9167 \\
         6 & [32, 64, 128] & 0.1 & $1\cdot10^{-4}$ & 32 & 100 & 1000 & -2.0246 \\
     \end{tabular}
-    \caption{
+    \caption[Comparison of different architectures for the \gls{mc} dropout model]{
         Comparison of different architectures for the \gls{mc} dropout model.
         ``Dr'' stands for dropout rate at each layer (we only experimented with the dropout rate staying constant over the layers), ``Lr'' stands for learning rate, ``Bs'' stands for batch size, ``Epochs'' stands for the number of epochs, ``F'' stands for the number of forward passes used in an ensemble, and ``Loss'' stands for the model's validation loss.
     }
